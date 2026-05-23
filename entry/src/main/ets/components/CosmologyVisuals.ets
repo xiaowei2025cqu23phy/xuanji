@@ -44,7 +44,7 @@ export struct HeTu {
     }
     .width('100%')
     .aspectRatio(1)
-    .maxWidth(300)
+    .constraintSize({ maxWidth: 300 })
     .backgroundColor(COLORS.WHITE + '66')
     .borderRadius('50%')
     .border({ width: 1, color: COLORS.INK_BLACK + '1A' })
@@ -53,11 +53,25 @@ export struct HeTu {
 
   @Builder
   HeTuPair(n: number, total: number) {
-    Row({ space: 2 }) {
-      ForEach(Array.from({ length: n }), (_: Object, idx: number) => {
-        Circle({ width: 8, height: 8 })
-          .fill(COLORS.INK_BLACK)
-      }, (idx: number) => idx.toString())
+    Column({ space: 2 }) {
+      // 白点（阳数 n）
+      Row({ space: 2 }) {
+        ForEach(Array.from({ length: n }), (_: Object, idx: number) => {
+          Circle({ width: 8, height: 8 })
+            .fill(COLORS.WHITE)
+            .stroke(COLORS.INK_BLACK)
+            .strokeWidth(1)
+        }, (idx: number) => idx.toString())
+      }
+      .justifyContent(FlexAlign.Center)
+      // 黑点（阴数 total-n）
+      Row({ space: 2 }) {
+        ForEach(Array.from({ length: total - n }), (_: Object, idx: number) => {
+          Circle({ width: 8, height: 8 })
+            .fill(COLORS.INK_BLACK)
+        }, (idx: number) => idx.toString())
+      }
+      .justifyContent(FlexAlign.Center)
     }
     .justifyContent(FlexAlign.Center)
   }
@@ -66,6 +80,8 @@ export struct HeTu {
 // LuoShu (洛书) - Magic Square
 @Component
 export struct LuoShu {
+  private numbers: number[][] = [[4, 9, 2], [3, 5, 7], [8, 1, 6]]
+
   build() {
     Stack() {
       Text('洛书')
@@ -76,8 +92,7 @@ export struct LuoShu {
         .translate({ x: '-50%', y: '-50%' })
 
       Grid() {
-        const numbers = [[4, 9, 2], [3, 5, 7], [8, 1, 6]]
-        ForEach(numbers.flat(), (n: number, idx: number) => {
+        ForEach(this.numbers.flat(), (n: number, idx: number) => {
           GridItem() {
             Stack() {
               Row() {
@@ -107,7 +122,7 @@ export struct LuoShu {
     }
     .width('100%')
     .aspectRatio(1)
-    .maxWidth(300)
+    .constraintSize({ maxWidth: 300 })
     .backgroundColor(COLORS.WHITE + '66')
     .border({ width: 1, color: COLORS.INK_BLACK + '1A' })
     .padding(16)
@@ -126,35 +141,32 @@ interface TrigramDetailItem {
   prePos: string
   postPos: string
 }
-interface TrigramDetailMap {
-  [key: string]: TrigramDetailItem
-}
-
 function makeTrigramDetail(name: string, nature: string, element: string, symbol: string, family: string, bodyPart: string, hint: string, prePos: string, postPos: string): TrigramDetailItem {
   let item: TrigramDetailItem = { name: name, nature: nature, element: element, symbol: symbol, family: family, bodyPart: bodyPart, hint: hint, prePos: prePos, postPos: postPos }
   return item
 }
 
-function buildTrigramDetails(): TrigramDetailMap {
-  let m: TrigramDetailMap = {}
-  m['乾'] = makeTrigramDetail('乾 (Qián)', '天', '金', '刚健不息，权威统领', '父', '首', '官鬼/妻财之源', '正南', '西北')
-  m['兑'] = makeTrigramDetail('兑 (Duì)', '泽', '金', '喜悦滋润, 欢欣交流', '少女', '口', '主交际与财源', '东南', '正西')
-  m['离'] = makeTrigramDetail('离 (Lí)', '火', '火', '光明灿烂，附丽而生', '中女', '目', '主明志与文书', '正东', '正南')
-  m['震'] = makeTrigramDetail('震 (Zhèn)', '雷', '木', '奋发震动，生机勃发', '长男', '足', '主执行与变动', '东北', '正东')
-  m['巽'] = makeTrigramDetail('巽 (Xùn)', '风', '木', '柔顺渗透，无孔不入', '长女', '股', '主柔和与财商', '西南', '东南')
-  m['坎'] = makeTrigramDetail('坎 (Kǎn)', '水', '水', '艰难深邃，处险而不动', '中男', '耳', '主智慧与困难', '正西', '正北')
-  m['艮'] = makeTrigramDetail('艮 (Gèn)', '山', '土', '沉稳止息，厚重如山', '少男', '手', '主守成与节点', '西北', '东北')
-  m['坤'] = makeTrigramDetail('坤 (Kūn)', '地', '土', '厚德载物，包容万象', '母', '腹', '主孕育与基础', '正北', '西南')
+function buildTrigramDetails(): Map<string, TrigramDetailItem> {
+  let m: Map<string, TrigramDetailItem> = new Map<string, TrigramDetailItem>()
+  m.set('乾', makeTrigramDetail('乾 (Qián)', '天', '金', '刚健不息，权威统领', '父', '首', '官鬼/妻财之源', '正南', '西北'))
+  m.set('兑', makeTrigramDetail('兑 (Duì)', '泽', '金', '喜悦滋润, 欢欣交流', '少女', '口', '主交际与财源', '东南', '正西'))
+  m.set('离', makeTrigramDetail('离 (Lí)', '火', '火', '光明灿烂，附丽而生', '中女', '目', '主明志与文书', '正东', '正南'))
+  m.set('震', makeTrigramDetail('震 (Zhèn)', '雷', '木', '奋发震动，生机勃发', '长男', '足', '主执行与变动', '东北', '正东'))
+  m.set('巽', makeTrigramDetail('巽 (Xùn)', '风', '木', '柔顺渗透，无孔不入', '长女', '股', '主柔和与财商', '西南', '东南'))
+  m.set('坎', makeTrigramDetail('坎 (Kǎn)', '水', '水', '艰难深邃，处险而不动', '中男', '耳', '主智慧与困难', '正西', '正北'))
+  m.set('艮', makeTrigramDetail('艮 (Gèn)', '山', '土', '沉稳止息，厚重如山', '少男', '手', '主守成与节点', '西北', '东北'))
+  m.set('坤', makeTrigramDetail('坤 (Kūn)', '地', '土', '厚德载物，包容万象', '母', '腹', '主孕育与基础', '正北', '西南'))
   return m
 }
 
+@Component
 export struct BaguaCircle {
   @State currentMode: string = 'pre'
   @State selectedTrigram: string = ''
 
   private trigramsPre: string[] = ['乾', '巽', '坎', '艮', '坤', '震', '离', '兑']
   private trigramsPost: string[] = ['离', '坤', '兑', '乾', '坎', '艮', '震', '巽']
-  private trigramDetails: TrigramDetailMap = buildTrigramDetails()
+  private trigramDetails: Map<string, TrigramDetailItem> = buildTrigramDetails()
 
   build() {
     Column({ space: 16 }) {
@@ -217,9 +229,8 @@ export struct BaguaCircle {
       }
       .width('100%')
       .aspectRatio(1)
-      .maxWidth(320)
+      .constraintSize({ maxWidth: 320 })
       .alignContent(Alignment.Center)
-      .justifyContent(FlexAlign.Center)
 
       // Detail panel
       if (this.selectedTrigram) {
@@ -263,16 +274,16 @@ export struct BaguaCircle {
     const radius = 90
     const x = Math.cos(angle * Math.PI / 180) * radius
     const y = Math.sin(angle * Math.PI / 180) * radius
+    // Stack parent is ~288px (320 maxWidth - 32 padding), center at ~144
+    const center = 144
     return {
-      x: `calc(50% + ${x}px)`,
-      y: `calc(50% + ${y}px)`
+      x: center + x - 20,
+      y: center + y - 20
     }
   }
 
   @Builder
   TrigramDetailPanel(trigram: string) {
-    let details = this.trigramDetails.get(trigram)
-    if (details !== undefined) {
     Column() {
       Row({ space: 12 }) {
         Circle({ width: 40, height: 40 })
@@ -281,12 +292,12 @@ export struct BaguaCircle {
 
         Column({ space: 4 }) {
           Row({ space: 8 }) {
-            Text(details.name)
+            Text(this.trigramDetails.get(trigram)?.name ?? '')
               .fontSize(14)
               .fontColor(COLORS.IMPERIAL_RED)
               .fontWeight(FontWeight.Bold)
 
-            Text(`${details.element} (${details.nature})`)
+            Text(this.trigramDetails.get(trigram)?.element ?? '' + ' (' + this.trigramDetails.get(trigram)?.nature ?? '' + ')')
               .fontSize(10)
               .fontColor(COLORS.INK_BLACK + '99')
               .backgroundColor(COLORS.INK_BLACK + '08')
@@ -294,7 +305,7 @@ export struct BaguaCircle {
               .borderRadius(8)
           }
 
-          Text(`${details.symbol}`)
+          Text(this.trigramDetails.get(trigram)?.symbol ?? '')
             .fontSize(11)
             .fontColor(COLORS.INK_BLACK + '80')
         }
@@ -308,7 +319,7 @@ export struct BaguaCircle {
             Text('家族 / 身体')
               .fontSize(8)
               .fontColor(COLORS.INK_BLACK + '4D')
-            Text(`${details.family} (${details.bodyPart})`)
+            Text((this.trigramDetails.get(trigram)?.family ?? '') + ' (' + (this.trigramDetails.get(trigram)?.bodyPart ?? '') + ')')
               .fontSize(10)
               .fontColor(COLORS.INK_BLACK + '80')
           }
@@ -318,7 +329,7 @@ export struct BaguaCircle {
             Text('先天 / 后天位')
               .fontSize(8)
               .fontColor(COLORS.INK_BLACK + '4D')
-            Text(`${details.prePos} / ${details.postPos}`)
+            Text((this.trigramDetails.get(trigram)?.prePos ?? '') + ' / ' + (this.trigramDetails.get(trigram)?.postPos ?? ''))
               .fontSize(10)
               .fontColor(COLORS.INK_BLACK + '80')
           }
@@ -328,7 +339,7 @@ export struct BaguaCircle {
       .rowsTemplate('1fr')
       .width('100%')
 
-      Text(details.hint)
+      Text(this.trigramDetails.get(trigram)?.hint ?? '')
         .fontSize(10)
         .fontColor(COLORS.IMPERIAL_RED + '99')
         .fontStyle(FontStyle.Italic)
@@ -341,6 +352,5 @@ export struct BaguaCircle {
     .padding(16)
     .backgroundColor(COLORS.WHITE + '99')
     .border({ width: 1, color: COLORS.INK_BLACK + '0D' })
-    }
   }
 }

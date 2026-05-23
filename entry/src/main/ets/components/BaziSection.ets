@@ -56,7 +56,6 @@ export struct BaziSection {
           Text('出生日期')
             .fontSize(10)
             .fontColor(COLORS.INK_BLACK + '99')
-            .fontWeight(FontWeight.Bold)
             .fontWeight(FontWeight.Normal)
 
           DatePicker({
@@ -196,8 +195,8 @@ export struct BaziSection {
           .fontColor(COLORS.INK_BLACK + '80')
         Text(p.element)
           .fontSize(9)
-          .fontColor(ELEMENT_COLORS.get(p.element) || COLORS.INK_BLACK)
-          .backgroundColor(ELEMENT_COLORS.get(p.element) + '1A' || COLORS.INK_BLACK + '0D')
+          .fontColor(ELEMENT_COLORS.get(p.element) ?? COLORS.INK_BLACK)
+          .backgroundColor((ELEMENT_COLORS.get(p.element) ?? COLORS.INK_BLACK) + '1A')
           .padding({ left: 8, right: 8, top: 2, bottom: 2 })
           .borderRadius(4)
       }
@@ -454,6 +453,7 @@ export struct BaziSection {
       let errMsg: ChatMessage = makeChatMessage('assistant', 'AI解析暂时不可用。' + this.baseAnalysis)
       this.chatHistory.push(errMsg)
       this.chatHistory = this.chatHistory.slice()
+      this.aiLoading = false
     } finally {
       this.aiLoading = false
     }

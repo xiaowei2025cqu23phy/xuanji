@@ -41,19 +41,27 @@ struct MiniHexagram {
   build() {
     Column({ space: 2 }) {
       ForEach(this.binary.split('').reverse(), (bit: string, idx: number) => {
-        if (bit === '1') {
-          Row()
-            .width('100%')
-            .height(2)
-            .backgroundColor(this.color)
-            .opacity(0.8)
-        } else {
-          Row({ space: 4 }) {
-            Row().height(2).backgroundColor(this.color).opacity(0.8).layoutWeight(1)
-            Row().height(2).backgroundColor(this.color).opacity(0.8).layoutWeight(1)
+        Row({ space: bit === '1' ? 0 : 4 }) {
+          if (bit === '1') {
+            Row()
+              .height(2)
+              .backgroundColor(this.color)
+              .opacity(0.8)
+              .layoutWeight(1)
+          } else {
+            Row()
+              .height(2)
+              .backgroundColor(this.color)
+              .opacity(0.8)
+              .layoutWeight(1)
+            Row()
+              .height(2)
+              .backgroundColor(this.color)
+              .opacity(0.8)
+              .layoutWeight(1)
           }
-          .width('100%')
         }
+        .width('100%')
       }, (bit: string, idx: number) => idx.toString())
     }
     .width(24)
@@ -669,6 +677,7 @@ export struct IChingSection {
       let errMsg: ChatMessage = makeChatMessage('assistant', 'AI解析暂时不可用。' + this.baseAnalysis)
       this.chatHistory.push(errMsg)
       this.chatHistory = this.chatHistory.slice()
+      this.aiLoading = false
     } finally {
       this.aiLoading = false
     }
