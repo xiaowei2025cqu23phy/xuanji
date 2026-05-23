@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "天道玄机 - 易经八字命理分析平台"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "天道玄机主页面"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "天道玄机"
+    },
+    {
+      "name": "internet_reason",
+      "value": "需要网络权限以连接AI大模型服务进行命理解析"
+    }
+  ]
+}
