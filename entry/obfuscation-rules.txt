@@ -1,0 +1,12 @@
+# Define project specific obfuscation rules here.
+#
+# For details, see HarmonyOS official documentation:
+# https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V5/ide-build-obfuscation-V5
+
+# Keep all component struct names and builder methods (ArkTS UI requires preserved names)
+-keep-class-name
+-keep-file-name
+
+# Disable name obfuscation by default (project uses Chinese strings and metadata)
+# Enable selectively only if package size becomes critical
+-disable-obfuscation

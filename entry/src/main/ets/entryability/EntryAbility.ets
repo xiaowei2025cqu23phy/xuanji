@@ -2,12 +2,14 @@ import { UIAbility, Want, AbilityConstant } from '@kit.AbilityKit'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { window } from '@kit.ArkUI'
 import { initAIConfig } from '../services/aiService'
+import { initReadingStore } from '../services/readingStore'
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(0x0000, 'Tiandao', 'Ability onCreate')
-    // Initialize AI config persistence with application context
+    // Initialize persistent services with application context
     initAIConfig(this.context)
+    initReadingStore(this.context)
   }
 
   onDestroy(): void {

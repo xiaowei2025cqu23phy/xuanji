@@ -25,7 +25,7 @@ export class COLORS {
   static readonly DARK_TEXT_SECONDARY: string = '#A0A0A0'
   static readonly DARK_TEXT_CAPTION: string = '#6E6E6E'
   static readonly DARK_RED: string = '#E04545'
-  static readonly DARK_GOLD: string = '#C4A46C'
+  static readonly DARK_GOLD_BRIGHT: string = '#C4A46C'
 
   // Alpha compositing
   static alpha(hex: string, opacity: number): string {
@@ -37,43 +37,82 @@ export class COLORS {
 }
 
 // Common opacity token shortcuts (hex suffix for colors without alpha channel)
-export const OP = {
-  FULL:   'FF',  // 100%
-  HIGH:   'CC',  // ~80%
-  MEDIUM: '99',  // ~60%
-  LOW:    '66',  // ~40%
-  X_LOW:  '4D',  // ~30%
-  LIGHT:  '33',  // ~20%
-  FAINT:  '1A',  // ~10%
-  X_FAINT:'0D',  // ~5%
-  TINY:   '08',  // ~3%
-  TRACE:  '05',  // ~2%
-  GHOST:  '03',  // ~1%
+export interface OpColors {
+  FULL: string
+  HIGH: string
+  MEDIUM: string
+  LOW: string
+  X_LOW: string
+  LIGHT: string
+  FAINT: string
+  X_FAINT: string
+  TINY: string
+  TRACE: string
+  GHOST: string
+}
+
+export const OP: OpColors = {
+  FULL:   'FF',
+  HIGH:   'CC',
+  MEDIUM: '99',
+  LOW:    '66',
+  X_LOW:  '4D',
+  LIGHT:  '33',
+  FAINT:  '1A',
+  X_FAINT:'0D',
+  TINY:   '08',
+  TRACE:  '05',
+  GHOST:  '03',
 }
 
 // Pre-composed semantic ink colors (avoids repeated `COLORS.INK_BLACK + OP.XXX` inline)
-export const INK = {
-  PRIMARY:   COLORS.INK_BLACK,                       // #1A1A1C
-  SECONDARY: COLORS.INK_BLACK + OP.LOW,              // 40%
-  BODY:      COLORS.INK_BLACK + '80',                // 50%
-  CAPTION:   COLORS.INK_BLACK + OP.X_LOW,            // 30%
-  LABEL:     COLORS.INK_BLACK + OP.MEDIUM,           // 60%
-  BORDER:    COLORS.INK_BLACK + OP.FAINT,            // 10%
-  HAIRLINE:  COLORS.INK_BLACK + OP.X_FAINT,          // 5%
-  BG_LIGHT:  COLORS.INK_BLACK + OP.TINY,             // 3%
-  BG_MEDIUM: COLORS.INK_BLACK + OP.TRACE,            // 2%
-  BG_FAINT:  COLORS.INK_BLACK + OP.GHOST,            // 1%
-  PLACEHOLDER: COLORS.INK_BLACK + OP.LIGHT,          // 20%
+export interface InkColors {
+  PRIMARY: string
+  SECONDARY: string
+  BODY: string
+  CAPTION: string
+  LABEL: string
+  BORDER: string
+  HAIRLINE: string
+  FAINT: string
+  BG_LIGHT: string
+  BG_MEDIUM: string
+  BG_FAINT: string
+  PLACEHOLDER: string
+}
+
+export const INK: InkColors = {
+  PRIMARY:   COLORS.INK_BLACK,
+  SECONDARY: COLORS.INK_BLACK + OP.LOW,
+  BODY:      COLORS.INK_BLACK + '80',
+  CAPTION:   COLORS.INK_BLACK + OP.X_LOW,
+  LABEL:     COLORS.INK_BLACK + OP.MEDIUM,
+  BORDER:    COLORS.INK_BLACK + OP.FAINT,
+  HAIRLINE:  COLORS.INK_BLACK + OP.X_FAINT,
+  FAINT:     COLORS.INK_BLACK + OP.FAINT,
+  BG_LIGHT:  COLORS.INK_BLACK + OP.TINY,
+  BG_MEDIUM: COLORS.INK_BLACK + OP.TRACE,
+  BG_FAINT:  COLORS.INK_BLACK + OP.GHOST,
+  PLACEHOLDER: COLORS.INK_BLACK + OP.LIGHT,
 }
 
 // Pre-composed imperial red colors
-export const RED = {
+export interface RedColors {
+  PRIMARY: string
+  BORDER: string
+  BG_LIGHT: string
+  BG_MEDIUM: string
+  BG_FAINT: string
+  LABEL: string
+}
+
+export const RED: RedColors = {
   PRIMARY:   COLORS.IMPERIAL_RED,
-  BORDER:    COLORS.IMPERIAL_RED + OP.LIGHT,         // 20%
-  BG_LIGHT:  COLORS.IMPERIAL_RED + '0F',             // ~6%
-  BG_MEDIUM: COLORS.IMPERIAL_RED + OP.TINY,          // 3%
-  BG_FAINT:  COLORS.IMPERIAL_RED + OP.TRACE,         // 2%
-  LABEL:     COLORS.IMPERIAL_RED + OP.MEDIUM,        // 60%
+  BORDER:    COLORS.IMPERIAL_RED + OP.LIGHT,
+  BG_LIGHT:  COLORS.IMPERIAL_RED + '0F',
+  BG_MEDIUM: COLORS.IMPERIAL_RED + OP.TINY,
+  BG_FAINT:  COLORS.IMPERIAL_RED + OP.TRACE,
+  LABEL:     COLORS.IMPERIAL_RED + OP.MEDIUM,
 }
 
 // ============================================================
@@ -209,16 +248,26 @@ export enum ThemeMode {
   DARK = 'dark'
 }
 
-export function themeColors(mode: ThemeMode): {
-  bg: string, surface: string, card: string, border: string,
-  textPrimary: string, textSecondary: string, textCaption: string,
-  red: string, gold: string, cardActive: string, paper: string
-} {
+export interface ThemeColors {
+  bg: string
+  surface: string
+  card: string
+  border: string
+  textPrimary: string
+  textSecondary: string
+  textCaption: string
+  red: string
+  gold: string
+  cardActive: string
+  paper: string
+}
+
+export function themeColors(mode: ThemeMode): ThemeColors {
   if (mode === ThemeMode.DARK) {
     return {
       bg: COLORS.DARK_BG, surface: COLORS.DARK_SURFACE, card: COLORS.DARK_CARD, border: COLORS.DARK_BORDER,
       textPrimary: COLORS.DARK_TEXT_PRIMARY, textSecondary: COLORS.DARK_TEXT_SECONDARY, textCaption: COLORS.DARK_TEXT_CAPTION,
-      red: COLORS.DARK_RED, gold: COLORS.DARK_GOLD, cardActive: COLORS.DARK_CARD, paper: COLORS.DARK_BG
+      red: COLORS.DARK_RED, gold: COLORS.DARK_GOLD_BRIGHT, cardActive: COLORS.DARK_CARD, paper: COLORS.DARK_BG
     }
   }
   return {

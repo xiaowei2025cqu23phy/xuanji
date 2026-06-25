@@ -1,0 +1,152 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Tian Dao Xuan Ji - I Ching & Ba Zi Destiny Analysis Platform"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Tian Dao Xuan Ji Main Page"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Tian Dao"
+    },
+    {
+      "name": "tab_bazi_label",
+      "value": "Ba Zi"
+    },
+    {
+      "name": "tab_iching_label",
+      "value": "I Ching"
+    },
+    {
+      "name": "app_title",
+      "value": "Tian Dao Xuan Ji"
+    },
+    {
+      "name": "subtitle_left",
+      "value": "Plum Blossom"
+    },
+    {
+      "name": "subtitle_right",
+      "value": "Study Nature"
+    },
+    {
+      "name": "btn_calculate",
+      "value": "Analyze Chart"
+    },
+    {
+      "name": "btn_divine",
+      "value": "Complete Casting"
+    },
+    {
+      "name": "btn_reset",
+      "value": "Reset"
+    },
+    {
+      "name": "btn_send",
+      "value": "Send"
+    },
+    {
+      "name": "label_birth_date",
+      "value": "Birth Date"
+    },
+    {
+      "name": "label_birth_time",
+      "value": "Birth Time"
+    },
+    {
+      "name": "label_gender_male",
+      "value": "Male"
+    },
+    {
+      "name": "label_gender_female",
+      "value": "Female"
+    },
+    {
+      "name": "label_four_pillars",
+      "value": "Four Pillars"
+    },
+    {
+      "name": "label_five_elements",
+      "value": "Five Elements"
+    },
+    {
+      "name": "label_day_master",
+      "value": "Day Master Analysis"
+    },
+    {
+      "name": "label_structure",
+      "value": "Structure:"
+    },
+    {
+      "name": "label_ai_title",
+      "value": "AI Master Analysis"
+    },
+    {
+      "name": "label_settings",
+      "value": "AI Settings"
+    },
+    {
+      "name": "label_provider",
+      "value": "Provider"
+    },
+    {
+      "name": "label_api_key",
+      "value": "API Key"
+    },
+    {
+      "name": "label_model",
+      "value": "Model Name"
+    },
+    {
+      "name": "label_base_url",
+      "value": "Base URL"
+    },
+    {
+      "name": "btn_save_config",
+      "value": "Save Config"
+    },
+    {
+      "name": "btn_cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "footer_tagline",
+      "value": "Meihua Divination"
+    },
+    {
+      "name": "footer_cosmology",
+      "value": "HeTu & LuoShu"
+    },
+    {
+      "name": "footer_najia",
+      "value": "Najia System"
+    },
+    {
+      "name": "footer_copyright",
+      "value": "© 2026 · Tian Dao Xuan Ji · Heaven's Decrypt"
+    },
+    {
+      "name": "api_key_missing",
+      "value": "No API key configured. Please set one in the settings gear icon."
+    },
+    {
+      "name": "api_unauthorized",
+      "value": "API key invalid or authorization denied. Please check settings."
+    },
+    {
+      "name": "api_rate_limited",
+      "value": "API rate limit exceeded. Please try again later."
+    },
+    {
+      "name": "api_timeout",
+      "value": "Network timeout. Please check your connection and try again."
+    },
+    {
+      "name": "api_network_error",
+      "value": "Network request failed. Please check your connection."
+    }
+  ]
+}

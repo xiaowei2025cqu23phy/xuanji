@@ -1,0 +1,7 @@
+{
+  "name": "ohosTest",
+  "type": "har",
+  "srcEntry": "./ets/TestAbility/TestAbility.ets",
+  "description": "天道玄机 单元测试模块",
+  "deliveryWithInstall": false
+}

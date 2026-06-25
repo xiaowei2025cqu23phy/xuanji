@@ -5,6 +5,13 @@ import { GET_HEX_BY_BINARY } from '../model/iching-data'
 
 export type AIProvider = string
 
+interface GeminiPart { text: string }
+interface GeminiSystemInstruction { parts: GeminiPart[] }
+interface GeminiRequestBody {
+  contents: ChatMessage[]
+  systemInstruction: GeminiSystemInstruction
+}
+
 export interface AIConfig {
   provider: AIProvider
   apiKey: string
@@ -221,10 +228,13 @@ async function callGeminiAPI(messages: ChatMessage[], config: AIConfig): Promise
   const httpReq = http.createHttp()
   try {
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + config.apiKey
-    const body = JSON.stringify({
+    const sysPart: GeminiPart = { text: SYSTEM_PROMPT }
+    const sysInst: GeminiSystemInstruction = { parts: [sysPart] }
+    const reqBody: GeminiRequestBody = {
       contents: contents,
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
-    })
+      systemInstruction: sysInst
+    }
+    const body = JSON.stringify(reqBody)
 
     const response = await httpReq.request(
       url,

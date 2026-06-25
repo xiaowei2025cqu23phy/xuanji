@@ -38,6 +38,19 @@
         "name": "ohos.permission.INTERNET",
         "reason": "$string:internet_reason"
       }
+    ],
+    "extensionAbilities": [
+      {
+        "name": "WidgetFormAbility",
+        "srcEntry": "./ets/widget/WidgetFormAbility.ets",
+        "type": "form",
+        "metadata": [
+          {
+            "name": "ohos.extension.form",
+            "resource": "$profile:form_config"
+          }
+        ]
+      }
     ]
   }
 }
