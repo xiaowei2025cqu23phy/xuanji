@@ -1,7 +1,7 @@
 {
   "app": {
-    "bundleName": "com.example.lizi224",
-    "vendor": "example",
+    "bundleName": "com.tiandao.xuanji",
+    "vendor": "tiandao",
     "versionCode": 1000000,
     "versionName": "1.0.0",
     "icon": "$media:layered_image",

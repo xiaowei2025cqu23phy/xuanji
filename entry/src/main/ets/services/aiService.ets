@@ -1,4 +1,5 @@
 import http from '@ohos.net.http'
+import dataPreferences from '@ohos.data.preferences'
 import { TEN_STEMS_ANALYSIS } from '../model/bazi-data'
 import { GET_HEX_BY_BINARY } from '../model/iching-data'
 
@@ -24,44 +25,28 @@ export interface CategoryInfo {
   icon: string
 }
 
-function makeAIConfig(provider: AIProvider, apiKey: string, model: string): AIConfig {
-  let config: AIConfig = { provider: provider, apiKey: apiKey, model: model }
-  return config
-}
-export const DEFAULT_AI_CONFIG: AIConfig = makeAIConfig('gemini', '', 'gemini-1.5-flash')
-
-function makeProviderInfo(id: string, label: string, defaultModel: string, baseUrl: string): ProviderInfo {
-  let info: ProviderInfo = { id: id, label: label, defaultModel: defaultModel, baseUrl: baseUrl }
-  return info
+export const DEFAULT_AI_CONFIG: AIConfig = {
+  provider: 'gemini',
+  apiKey: '',
+  model: 'gemini-1.5-flash'
 }
 
-function buildProviders(): ProviderInfo[] {
-  let providers: ProviderInfo[] = []
-  providers.push(makeProviderInfo('gemini', 'Google Gemini', 'gemini-1.5-flash', ''))
-  providers.push(makeProviderInfo('openai', 'ChatGPT (OpenAI)', 'gpt-4o-mini', 'https://api.openai.com/v1'))
-  providers.push(makeProviderInfo('deepseek', 'DeepSeek', 'deepseek-chat', 'https://api.deepseek.com'))
-  providers.push(makeProviderInfo('qwen', '阿里通义千问 (Qwen)', 'qwen-plus', 'https://dashscope.aliyuncs.com/compatible-mode/v1'))
-  providers.push(makeProviderInfo('zhipu', '智谱清言 (GLM)', 'glm-4-flash', 'https://open.bigmodel.cn/api/paas/v4'))
-  providers.push(makeProviderInfo('custom', '自定义 (OpenAI兼容)', '', ''))
-  return providers
-}
-export const AI_PROVIDERS: ProviderInfo[] = buildProviders()
+export const AI_PROVIDERS: ProviderInfo[] = [
+  { id: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-1.5-flash', baseUrl: '' },
+  { id: 'openai', label: 'ChatGPT (OpenAI)', defaultModel: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
+  { id: 'deepseek', label: 'DeepSeek', defaultModel: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' },
+  { id: 'qwen', label: '阿里通义千问 (Qwen)', defaultModel: 'qwen-plus', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { id: 'zhipu', label: '智谱清言 (GLM)', defaultModel: 'glm-4-flash', baseUrl: 'https://open.bigmodel.cn/api/paas/v4' },
+  { id: 'custom', label: '自定义 (OpenAI兼容)', defaultModel: '', baseUrl: '' },
+]
 
-function makeCategoryInfo(id: string, label: string, icon: string): CategoryInfo {
-  let cat: CategoryInfo = { id: id, label: label, icon: icon }
-  return cat
-}
-
-function buildCategories(): CategoryInfo[] {
-  let cats: CategoryInfo[] = []
-  cats.push(makeCategoryInfo('general', '综合运势 General', '?'))
-  cats.push(makeCategoryInfo('career', '事业前程 Career', '?'))
-  cats.push(makeCategoryInfo('love', '情感婚姻 Love', '?'))
-  cats.push(makeCategoryInfo('wealth', '财运求财 Wealth', '?'))
-  cats.push(makeCategoryInfo('health', '身体健康 Health', '?'))
-  return cats
-}
-export const QUESTION_CATEGORIES: CategoryInfo[] = buildCategories()
+export const QUESTION_CATEGORIES: CategoryInfo[] = [
+  { id: 'general', label: '综合运势 General', icon: '?' },
+  { id: 'career', label: '事业前程 Career', icon: '?' },
+  { id: 'love', label: '情感婚姻 Love', icon: '?' },
+  { id: 'wealth', label: '财运求财 Wealth', icon: '?' },
+  { id: 'health', label: '身体健康 Health', icon: '?' },
+]
 
 export type QuestionCategory = string
 
@@ -70,35 +55,85 @@ export interface ChatMessage {
   content: string
 }
 
-export function makeChatMessage(role: string, content: string): ChatMessage {
-  let msg: ChatMessage = { role: role, content: content }
-  return msg
-}
-
 const SYSTEM_PROMPT = '你是一位深谙中华传统易经与八字命理的命理大师，人称"天道先生"。\n' +
   '你说话富有哲理，温婉含蓄，又不失威严。\n' +
   '请根据用户提供的八字格局或卦象结果，给出兼具文学美感与生活指导意义的深度解析。\n' +
   '语气要平和、慈悲。使用中文。'
 
-// In-memory config storage (no @ohos.data.preferences dependency)
-let savedConfig: AIConfig = DEFAULT_AI_CONFIG
+// ----- Persistent config storage -----
+const PREF_STORE = 'ai_config'
+const KEY_PROVIDER = 'provider'
+const KEY_API_KEY = 'apiKey'
+const KEY_MODEL = 'model'
+const KEY_BASE_URL = 'baseUrl'
 
-export function loadAIConfig(): AIConfig {
-  return savedConfig
+let preferences: dataPreferences.Preferences | null = null
+
+export async function initAIConfig(context: Context): Promise<void> {
+  try {
+    preferences = await dataPreferences.getPreferences(context, PREF_STORE)
+  } catch (_e) {
+    preferences = null
+  }
 }
 
-export function saveAIConfig(config: AIConfig): void {
-  savedConfig = config
+export async function loadAIConfig(): Promise<AIConfig> {
+  if (!preferences) {
+    return DEFAULT_AI_CONFIG
+  }
+  try {
+    const provider = await preferences.get(KEY_PROVIDER, DEFAULT_AI_CONFIG.provider) as string
+    const apiKey = await preferences.get(KEY_API_KEY, DEFAULT_AI_CONFIG.apiKey) as string
+    const model = await preferences.get(KEY_MODEL, DEFAULT_AI_CONFIG.model) as string
+    const baseUrl = await preferences.get(KEY_BASE_URL, '') as string
+    return { provider, apiKey, model, baseUrl: baseUrl || undefined }
+  } catch (_e) {
+    return DEFAULT_AI_CONFIG
+  }
 }
 
+export async function saveAIConfig(config: AIConfig): Promise<void> {
+  if (!preferences) {
+    return
+  }
+  try {
+    await preferences.put(KEY_PROVIDER, config.provider)
+    await preferences.put(KEY_API_KEY, config.apiKey)
+    await preferences.put(KEY_MODEL, config.model)
+    await preferences.put(KEY_BASE_URL, config.baseUrl || '')
+    await preferences.flush()
+  } catch (_e) {
+    // Persistence failed; config stays in memory for the session
+  }
+}
+
+// ----- HTTP client helpers -----
+const TIMEOUT_CONNECT = 15000  // 15s connection timeout
+const TIMEOUT_READ = 30000     // 30s read timeout
+
+function createRequestOptions(method: http.RequestMethod, headers: Record<string, string>, body: string): http.HttpRequestOptions {
+  return {
+    method: method,
+    header: headers,
+    extraData: body,
+    connectTimeout: TIMEOUT_CONNECT,
+    readTimeout: TIMEOUT_READ
+  }
+}
+
+function safeString(val: Object | undefined | null): string {
+  if (val === undefined || val === null) return ''
+  return val as string
+}
+
+// ----- API callers -----
 export async function interpretMetaphysics(
   promptOrMessages: string | ChatMessage[],
   config: AIConfig = DEFAULT_AI_CONFIG
 ): Promise<string> {
-  let messages: ChatMessage[] = []
+  let messages: ChatMessage[]
   if (typeof promptOrMessages === 'string') {
-    let msg: ChatMessage = makeChatMessage('user', promptOrMessages)
-    messages = [msg]
+    messages = [{ role: 'user', content: promptOrMessages }]
   } else {
     messages = promptOrMessages
   }
@@ -112,128 +147,135 @@ export async function interpretMetaphysics(
 
 async function callOpenAICompatibleAPI(messages: ChatMessage[], config: AIConfig): Promise<string> {
   if (config.apiKey.length === 0) {
-    return '未设置 API 密钥。请在设置中配置。'
+    return '未设置 API 密钥。请在右上角齿轮图标中配置 AI。'
   }
 
   const baseUrl = config.baseUrl || getDefaultBaseUrl(config.provider)
   const modelName = config.model || getDefaultModel(config.provider)
 
-  // Build messages array with system prompt prepended
-  let allMessages: ChatMessage[] = []
-  let sysMsg: ChatMessage = makeChatMessage('system', SYSTEM_PROMPT)
-  allMessages.push(sysMsg)
-  for (let i = 0; i < messages.length; i++) {
-    allMessages.push(messages[i])
-  }
+  const allMessages: ChatMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...messages
+  ]
 
-  const httpRequest = http.createHttp()
-  let result: string = 'API 请求失败，请检查网络连接和API配置。'
+  const httpReq = http.createHttp()
   try {
-    const url: string = baseUrl + '/chat/completions'
-    const body: string = JSON.stringify({
-      model: modelName,
-      messages: allMessages
-    })
-    const response = await httpRequest.request(
+    const url = baseUrl + '/chat/completions'
+    const body = JSON.stringify({ model: modelName, messages: allMessages })
+    const response = await httpReq.request(
       url,
-      {
-        method: http.RequestMethod.POST,
-        header: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + config.apiKey
-        },
-        extraData: body
-      }
+      createRequestOptions(http.RequestMethod.POST, {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + config.apiKey
+      }, body)
     )
 
     if (response.responseCode === 200) {
-      const respStr: string = response.result as string
-      const data: Object = JSON.parse(respStr) as Object
-      const dataObj: Record<string, Object> = data as Record<string, Object>
-      const choices: Object[] = dataObj['choices'] as Object[]
+      const data = JSON.parse(response.result as string) as Record<string, Object>
+      const choices = data['choices'] as Object[]
       if (choices && choices.length > 0) {
-        const firstChoice: Record<string, Object> = choices[0] as Record<string, Object>
-        const msgObj: Record<string, Object> = firstChoice['message'] as Record<string, Object>
-        const content: string = msgObj['content'] as string
-        if (content && content.length > 0) {
-          result = content
+        const firstChoice = choices[0] as Record<string, Object>
+        const msgObj = firstChoice['message'] as Record<string, Object>
+        const content = safeString(msgObj['content'])
+        if (content.length > 0) {
+          return content
         }
       }
+      return 'AI 返回了空响应，请重试。'
     }
+
+    if (response.responseCode === 401 || response.responseCode === 403) {
+      return 'API 密钥无效或权限不足 (HTTP ' + response.responseCode + ')。请检查设置。'
+    }
+    if (response.responseCode === 429) {
+      return 'API 调用频率超限，请稍后重试。'
+    }
+    return 'API 请求失败 (HTTP ' + response.responseCode + ')。请检查网络与配置。'
   } catch (e) {
-    // Return error message
+    const errMsg = (e as Object).toString()
+    if (errMsg.includes('timeout') || errMsg.includes('Timeout')) {
+      return '网络连接超时，请检查网络后重试。'
+    }
+    if (errMsg.includes('resolve') || errMsg.includes('DNS') || errMsg.includes('unknown host')) {
+      return '无法解析 API 服务器地址，请检查网络或 base URL 配置。'
+    }
+    return '网络请求失败：' + errMsg.substring(0, 80)
   } finally {
-    httpRequest.destroy()
+    httpReq.destroy()
   }
-  return result
 }
 
 async function callGeminiAPI(messages: ChatMessage[], config: AIConfig): Promise<string> {
   if (config.apiKey.length === 0) {
-    return '未设置 Gemini API 密钥。请在设置中配置并保存。'
+    return '未设置 Gemini API 密钥。请在右上角齿轮图标中配置。'
   }
 
   const modelName = config.model || 'gemini-2.0-flash'
 
-  // Build contents array for Gemini
-  let contents: ChatMessage[] = []
+  const contents: ChatMessage[] = []
   for (let i = 0; i < messages.length; i++) {
     const m = messages[i]
-    const geminiRole: string = m.role === 'user' ? 'user' : 'model'
-    let contentObj: ChatMessage = makeChatMessage(geminiRole, m.content)
-    contents.push(contentObj)
+    contents.push({ role: m.role === 'user' ? 'user' : 'model', content: m.content })
   }
 
-  const httpRequest = http.createHttp()
-  let result: string = 'Gemini API 请求失败。'
-
+  const httpReq = http.createHttp()
   try {
-    const url: string = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + config.apiKey
-    let sysPart: ChatMessage = makeChatMessage('system', SYSTEM_PROMPT)
-    let sysParts: ChatMessage[] = []
-    sysParts.push(sysPart)
-    let bodyRecord: Record<string, Object> = {} as Record<string, Object>
-    bodyRecord['contents'] = contents as Object
-    let siObj: Record<string, Object> = {} as Record<string, Object>
-    siObj['parts'] = sysParts as Object
-    bodyRecord['systemInstruction'] = siObj as Object
-    const body: string = JSON.stringify(bodyRecord)
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + config.apiKey
+    const body = JSON.stringify({
+      contents: contents,
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
+    })
 
-    const response = await httpRequest.request(
+    const response = await httpReq.request(
       url,
-      {
-        method: http.RequestMethod.POST,
-        header: {
-          'Content-Type': 'application/json',
-        },
-        extraData: body
-      }
+      createRequestOptions(http.RequestMethod.POST, { 'Content-Type': 'application/json' }, body)
     )
 
     if (response.responseCode === 200) {
-      const respStr: string = response.result as string
-      const data: Object = JSON.parse(respStr) as Object
-      const dataObj: Record<string, Object> = data as Record<string, Object>
-      const candidates: Object[] = dataObj['candidates'] as Object[]
+      const data = JSON.parse(response.result as string) as Record<string, Object>
+      const candidates = data['candidates'] as Object[]
       if (candidates && candidates.length > 0) {
-        const first: Record<string, Object> = candidates[0] as Record<string, Object>
-        const content: Record<string, Object> = first['content'] as Record<string, Object>
-        const parts: Object[] = content['parts'] as Object[]
+        const first = candidates[0] as Record<string, Object>
+        const content = first['content'] as Record<string, Object>
+        const parts = content['parts'] as Object[]
         if (parts && parts.length > 0) {
-          const part: Record<string, Object> = parts[0] as Record<string, Object>
-          const text: string = part['text'] as string
-          if (text && text.length > 0) {
-            result = text
+          const part = parts[0] as Record<string, Object>
+          const text = safeString(part['text'])
+          if (text.length > 0) {
+            return text
           }
         }
       }
+      // Check for safety block
+      const promptFeedback = data['promptFeedback'] as Record<string, Object> | undefined
+      if (promptFeedback) {
+        const blockReason = safeString(promptFeedback['blockReason'])
+        if (blockReason.length > 0) {
+          return '内容被 Gemini 安全策略拦截：' + blockReason
+        }
+      }
+      return 'Gemini 返回了空响应，请重试。'
     }
+
+    if (response.responseCode === 400) {
+      return 'Gemini API 请求参数错误。请检查模型名称是否正确。'
+    }
+    if (response.responseCode === 403) {
+      return 'Gemini API 密钥无效或权限不足。请检查设置。'
+    }
+    if (response.responseCode === 429) {
+      return 'Gemini API 调用频率超限，请稍后重试。'
+    }
+    return 'Gemini API 请求失败 (HTTP ' + response.responseCode + ')'
   } catch (e) {
-    // Return error message
+    const errMsg = (e as Object).toString()
+    if (errMsg.includes('timeout') || errMsg.includes('Timeout')) {
+      return '网络连接超时，请检查网络后重试。'
+    }
+    return '网络请求失败：' + errMsg.substring(0, 80)
   } finally {
-    httpRequest.destroy()
+    httpReq.destroy()
   }
-  return result
 }
 
 function getDefaultBaseUrl(provider: AIProvider): string {
@@ -254,8 +296,9 @@ function getDefaultModel(provider: AIProvider): string {
   return ''
 }
 
+// ----- Offline fallback analysis -----
 export function getOfflineBaziAnalysis(dayMaster: string): string {
-  let val = TEN_STEMS_ANALYSIS.get(dayMaster)
+  const val = TEN_STEMS_ANALYSIS.get(dayMaster)
   return val !== undefined ? val : '天机自得，顺应自然。'
 }
 

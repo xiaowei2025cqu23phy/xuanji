@@ -15,6 +15,142 @@
     {
       "name": "internet_reason",
       "value": "需要网络权限以连接AI大模型服务进行命理解析"
+    },
+    {
+      "name": "tab_bazi_label",
+      "value": "生辰八字"
+    },
+    {
+      "name": "tab_iching_label",
+      "value": "周易起卦"
+    },
+    {
+      "name": "app_title",
+      "value": "天道玄机"
+    },
+    {
+      "name": "subtitle_left",
+      "value": "梅香透骨"
+    },
+    {
+      "name": "subtitle_right",
+      "value": "格物致知"
+    },
+    {
+      "name": "btn_calculate",
+      "value": "排 盘 解 析"
+    },
+    {
+      "name": "btn_divine",
+      "value": "完成起卦 · 解卦"
+    },
+    {
+      "name": "btn_reset",
+      "value": "重新起卦"
+    },
+    {
+      "name": "btn_send",
+      "value": "发送"
+    },
+    {
+      "name": "label_birth_date",
+      "value": "出生日期"
+    },
+    {
+      "name": "label_birth_time",
+      "value": "出生时辰"
+    },
+    {
+      "name": "label_gender_male",
+      "value": "男 (Male)"
+    },
+    {
+      "name": "label_gender_female",
+      "value": "女 (Female)"
+    },
+    {
+      "name": "label_four_pillars",
+      "value": "四柱八字"
+    },
+    {
+      "name": "label_five_elements",
+      "value": "五行分布与生克"
+    },
+    {
+      "name": "label_day_master",
+      "value": "日主分析"
+    },
+    {
+      "name": "label_structure",
+      "value": "格局："
+    },
+    {
+      "name": "label_ai_title",
+      "value": "AI 大师解析"
+    },
+    {
+      "name": "label_settings",
+      "value": "AI服务配置 (AI Settings)"
+    },
+    {
+      "name": "label_provider",
+      "value": "模型服务商 (Provider)"
+    },
+    {
+      "name": "label_api_key",
+      "value": "API 密钥 (API Key)"
+    },
+    {
+      "name": "label_model",
+      "value": "模型名称 (Model Name)"
+    },
+    {
+      "name": "label_base_url",
+      "value": "接口地址 (Base URL)"
+    },
+    {
+      "name": "btn_save_config",
+      "value": "保存配置"
+    },
+    {
+      "name": "btn_cancel",
+      "value": "取消"
+    },
+    {
+      "name": "footer_tagline",
+      "value": "梅花易数 MEIHUA"
+    },
+    {
+      "name": "footer_cosmology",
+      "value": "河图洛书 COSMOLOGY"
+    },
+    {
+      "name": "footer_najia",
+      "value": "纳甲排盘 NAJIA"
+    },
+    {
+      "name": "footer_copyright",
+      "value": "© 2026 · 天道玄机 · 顺天应人 · HEAVENLY DECRYPT"
+    },
+    {
+      "name": "api_key_missing",
+      "value": "未设置 API 密钥。请在右上角齿轮图标中配置 AI。"
+    },
+    {
+      "name": "api_unauthorized",
+      "value": "API 密钥无效或权限不足，请检查设置。"
+    },
+    {
+      "name": "api_rate_limited",
+      "value": "API 调用频率超限，请稍后重试。"
+    },
+    {
+      "name": "api_timeout",
+      "value": "网络连接超时，请检查网络后重试。"
+    },
+    {
+      "name": "api_network_error",
+      "value": "网络请求失败，请检查连接。"
     }
   ]
 }

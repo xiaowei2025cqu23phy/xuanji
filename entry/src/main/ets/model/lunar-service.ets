@@ -1,4 +1,4 @@
-import { HEAVENLY_STEMS, EARTHLY_BRANCHES, STEM_ELEMENT, BRANCH_ELEMENT, SEASONAL_STRENGTH } from '../common/constants'
+import { HEAVENLY_STEMS, EARTHLY_BRANCHES, STEM_ELEMENT, BRANCH_ELEMENT, SEASONAL_STRENGTH, getElementRelation } from '../common/constants'
 import { BaziData, PillarData, TEN_STEMS_ANALYSIS, MonthCommand, StructureInfo } from './bazi-data'
 
 // Lunar calendar data: encoded as 4-byte integers per year (1900-2100)
@@ -192,43 +192,14 @@ function copyStrengthFromMap(src: Map<string, string>): Map<string, string> {
   return result
 }
 
-function getRelation(dmElement: string, monthElement: string): string {
-  // Flattened lookup using string comparison
-  if (dmElement === '木') {
-    if (monthElement === '木') return '比劫'
-    if (monthElement === '火') return '食伤'
-    if (monthElement === '土') return '财星'
-    if (monthElement === '金') return '官杀'
-    if (monthElement === '水') return '印枭'
-  }
-  if (dmElement === '火') {
-    if (monthElement === '火') return '比劫'
-    if (monthElement === '土') return '食伤'
-    if (monthElement === '金') return '财星'
-    if (monthElement === '水') return '官杀'
-    if (monthElement === '木') return '印枭'
-  }
-  if (dmElement === '土') {
-    if (monthElement === '土') return '比劫'
-    if (monthElement === '金') return '食伤'
-    if (monthElement === '水') return '财星'
-    if (monthElement === '木') return '官杀'
-    if (monthElement === '火') return '印枭'
-  }
-  if (dmElement === '金') {
-    if (monthElement === '金') return '比劫'
-    if (monthElement === '水') return '食伤'
-    if (monthElement === '木') return '财星'
-    if (monthElement === '火') return '官杀'
-    if (monthElement === '土') return '印枭'
-  }
-  if (dmElement === '水') {
-    if (monthElement === '水') return '比劫'
-    if (monthElement === '木') return '食伤'
-    if (monthElement === '火') return '财星'
-    if (monthElement === '土') return '官杀'
-    if (monthElement === '金') return '印枭'
-  }
+// Shared element-relation → ten-god (十神) mapping
+function toTenGod(dmElement: string, monthElement: string): string {
+  const rel = getElementRelation(dmElement, monthElement)
+  if (rel.label === '比和') return '比劫'
+  if (rel.label === '我生') return '食伤'
+  if (rel.label === '我克') return '财星'
+  if (rel.label === '克我') return '官杀'
+  if (rel.label === '生我') return '印枭'
   return ''
 }
 
@@ -304,7 +275,7 @@ export function calculateBazi(date: Date, gender: string): BaziData {
   const monthElement = monthElementVal !== undefined ? monthElementVal : ''
   const impact = '月令为【' + monthPillar.branch + monthElement + '】，日主' + lunar.dayStem + dmElement + '处于"' + dmStrength + '"之地。'
 
-  const relation = getRelation(dmElement, monthElement)
+  const relation = toTenGod(dmElement, monthElement)
   let structName = '正格'
   let structDesc = ''
 

@@ -1,5 +1,8 @@
+// ============================================================
 // Color Palette - Ink Wash Aesthetic
+// ============================================================
 export class COLORS {
+  // Light mode (ink wash)
   static readonly PAPER: string = '#F4EFDF'
   static readonly INK_BLACK: string = '#1A1A1C'
   static readonly IMPERIAL_RED: string = '#B91C1C'
@@ -12,87 +15,156 @@ export class COLORS {
   static readonly EARTH: string = '#7C512D'
   static readonly METAL: string = '#8A8A8A'
   static readonly WATER: string = '#1E3A8A'
+
+  // Dark mode palette
+  static readonly DARK_BG: string = '#1A1A1C'
+  static readonly DARK_SURFACE: string = '#252528'
+  static readonly DARK_CARD: string = '#2C2C30'
+  static readonly DARK_BORDER: string = '#3A3A3C'
+  static readonly DARK_TEXT_PRIMARY: string = '#E8E8E1'
+  static readonly DARK_TEXT_SECONDARY: string = '#A0A0A0'
+  static readonly DARK_TEXT_CAPTION: string = '#6E6E6E'
+  static readonly DARK_RED: string = '#E04545'
+  static readonly DARK_GOLD: string = '#C4A46C'
+
+  // Alpha compositing
+  static alpha(hex: string, opacity: number): string {
+    const clamped = Math.max(0, Math.min(1, opacity))
+    const byte = Math.round(clamped * 255)
+    const suffix = byte.toString(16).toUpperCase().padStart(2, '0')
+    return hex + suffix
+  }
 }
 
+// Common opacity token shortcuts (hex suffix for colors without alpha channel)
+export const OP = {
+  FULL:   'FF',  // 100%
+  HIGH:   'CC',  // ~80%
+  MEDIUM: '99',  // ~60%
+  LOW:    '66',  // ~40%
+  X_LOW:  '4D',  // ~30%
+  LIGHT:  '33',  // ~20%
+  FAINT:  '1A',  // ~10%
+  X_FAINT:'0D',  // ~5%
+  TINY:   '08',  // ~3%
+  TRACE:  '05',  // ~2%
+  GHOST:  '03',  // ~1%
+}
+
+// Pre-composed semantic ink colors (avoids repeated `COLORS.INK_BLACK + OP.XXX` inline)
+export const INK = {
+  PRIMARY:   COLORS.INK_BLACK,                       // #1A1A1C
+  SECONDARY: COLORS.INK_BLACK + OP.LOW,              // 40%
+  BODY:      COLORS.INK_BLACK + '80',                // 50%
+  CAPTION:   COLORS.INK_BLACK + OP.X_LOW,            // 30%
+  LABEL:     COLORS.INK_BLACK + OP.MEDIUM,           // 60%
+  BORDER:    COLORS.INK_BLACK + OP.FAINT,            // 10%
+  HAIRLINE:  COLORS.INK_BLACK + OP.X_FAINT,          // 5%
+  BG_LIGHT:  COLORS.INK_BLACK + OP.TINY,             // 3%
+  BG_MEDIUM: COLORS.INK_BLACK + OP.TRACE,            // 2%
+  BG_FAINT:  COLORS.INK_BLACK + OP.GHOST,            // 1%
+  PLACEHOLDER: COLORS.INK_BLACK + OP.LIGHT,          // 20%
+}
+
+// Pre-composed imperial red colors
+export const RED = {
+  PRIMARY:   COLORS.IMPERIAL_RED,
+  BORDER:    COLORS.IMPERIAL_RED + OP.LIGHT,         // 20%
+  BG_LIGHT:  COLORS.IMPERIAL_RED + '0F',             // ~6%
+  BG_MEDIUM: COLORS.IMPERIAL_RED + OP.TINY,          // 3%
+  BG_FAINT:  COLORS.IMPERIAL_RED + OP.TRACE,         // 2%
+  LABEL:     COLORS.IMPERIAL_RED + OP.MEDIUM,        // 60%
+}
+
+// ============================================================
 // Heavenly Stems and Earthly Branches
+// ============================================================
 export const HEAVENLY_STEMS: string[] = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
 export const EARTHLY_BRANCHES: string[] = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
 
-function buildStemElementMap(): Map<string, string> {
-  let m: Map<string, string> = new Map<string, string>()
-  m.set('甲', '木'); m.set('乙', '木')
-  m.set('丙', '火'); m.set('丁', '火')
-  m.set('戊', '土'); m.set('己', '土')
-  m.set('庚', '金'); m.set('辛', '金')
-  m.set('壬', '水'); m.set('癸', '水')
-  return m
-}
-export const STEM_ELEMENT: Map<string, string> = buildStemElementMap()
+export const STEM_ELEMENT: Map<string, string> = new Map([
+  ['甲', '木'], ['乙', '木'],
+  ['丙', '火'], ['丁', '火'],
+  ['戊', '土'], ['己', '土'],
+  ['庚', '金'], ['辛', '金'],
+  ['壬', '水'], ['癸', '水'],
+])
 
-function buildBranchElementMap(): Map<string, string> {
-  let m: Map<string, string> = new Map<string, string>()
-  m.set('寅', '木'); m.set('卯', '木')
-  m.set('巳', '火'); m.set('午', '火')
-  m.set('辰', '土'); m.set('戌', '土'); m.set('丑', '土'); m.set('未', '土')
-  m.set('申', '金'); m.set('酉', '金')
-  m.set('亥', '水'); m.set('子', '水')
-  return m
-}
-export const BRANCH_ELEMENT: Map<string, string> = buildBranchElementMap()
+export const BRANCH_ELEMENT: Map<string, string> = new Map([
+  ['寅', '木'], ['卯', '木'],
+  ['巳', '火'], ['午', '火'],
+  ['辰', '土'], ['戌', '土'], ['丑', '土'], ['未', '土'],
+  ['申', '金'], ['酉', '金'],
+  ['亥', '水'], ['子', '水'],
+])
 
-function buildElementColorsMap(): Map<string, string> {
-  let m: Map<string, string> = new Map<string, string>()
-  m.set('木', COLORS.WOOD)
-  m.set('火', COLORS.FIRE)
-  m.set('土', COLORS.EARTH)
-  m.set('金', COLORS.METAL)
-  m.set('水', COLORS.WATER)
-  return m
-}
-export const ELEMENT_COLORS: Map<string, string> = buildElementColorsMap()
+export const ELEMENT_COLORS: Map<string, string> = new Map([
+  ['木', COLORS.WOOD],
+  ['火', COLORS.FIRE],
+  ['土', COLORS.EARTH],
+  ['金', COLORS.METAL],
+  ['水', COLORS.WATER],
+])
 
 export const ELEMENT_ORDER: string[] = ['木', '火', '土', '金', '水']
 
-function makeSeasonalSubMap(wangElem: string, xiangElem: string): Map<string, string> {
-  let s: Map<string, string> = new Map<string, string>()
-  s.set('木', '平'); s.set('火', '平'); s.set('土', '平'); s.set('金', '平'); s.set('水', '平')
-  let xiuElem = ''; let qiuElem = ''; let siElem = ''
-  if (wangElem === '木') { xiuElem = '水'; qiuElem = '金'; siElem = '土' }
-  else if (wangElem === '火') { xiuElem = '木'; qiuElem = '水'; siElem = '金' }
-  else if (wangElem === '金') { xiuElem = '土'; qiuElem = '火'; siElem = '木' }
-  else if (wangElem === '水') { xiuElem = '金'; qiuElem = '土'; siElem = '火' }
-  else if (wangElem === '土') { xiuElem = '火'; qiuElem = '木'; siElem = '水' }
-  s.set(wangElem, '旺'); s.set(xiangElem, '相'); s.set(xiuElem, '休'); s.set(qiuElem, '囚'); s.set(siElem, '死')
-  return s
-}
-
-function buildSeasonalStrength(): Map<string, Map<string, string>> {
-  let m: Map<string, Map<string, string>> = new Map<string, Map<string, string>>()
-  m.set('寅', makeSeasonalSubMap('木', '火')); m.set('卯', makeSeasonalSubMap('木', '火'))
-  m.set('巳', makeSeasonalSubMap('火', '土')); m.set('午', makeSeasonalSubMap('火', '土'))
-  m.set('申', makeSeasonalSubMap('金', '水')); m.set('酉', makeSeasonalSubMap('金', '水'))
-  m.set('亥', makeSeasonalSubMap('水', '木')); m.set('子', makeSeasonalSubMap('水', '木'))
-  m.set('辰', makeSeasonalSubMap('土', '金')); m.set('戌', makeSeasonalSubMap('土', '金'))
-  m.set('丑', makeSeasonalSubMap('土', '金')); m.set('未', makeSeasonalSubMap('土', '金'))
+// Build seasonal strength maps (旺相休囚死) for each branch
+function makeSeasonal(wang: string, xiang: string): Map<string, string> {
+  let xiu = '', qiu = '', si = ''
+  if (wang === '木') { xiu = '水'; qiu = '金'; si = '土' }
+  else if (wang === '火') { xiu = '木'; qiu = '水'; si = '金' }
+  else if (wang === '金') { xiu = '土'; qiu = '火'; si = '木' }
+  else if (wang === '水') { xiu = '金'; qiu = '土'; si = '火' }
+  else if (wang === '土') { xiu = '火'; qiu = '木'; si = '水' }
+  const m = new Map<string, string>()
+  ELEMENT_ORDER.forEach((e: string) => { m.set(e, '平') })
+  m.set(wang, '旺'); m.set(xiang, '相'); m.set(xiu, '休'); m.set(qiu, '囚'); m.set(si, '死')
   return m
 }
-export const SEASONAL_STRENGTH: Map<string, Map<string, string>> = buildSeasonalStrength()
 
-function buildGenerativeCycle(): Map<string, string> {
-  let m: Map<string, string> = new Map<string, string>()
-  m.set('木', '火'); m.set('火', '土'); m.set('土', '金'); m.set('金', '水'); m.set('水', '木')
+export const SEASONAL_STRENGTH: Map<string, Map<string, string>> = (() => {
+  const m = new Map<string, Map<string, string>>()
+  m.set('寅', makeSeasonal('木', '火')); m.set('卯', makeSeasonal('木', '火'))
+  m.set('巳', makeSeasonal('火', '土')); m.set('午', makeSeasonal('火', '土'))
+  m.set('申', makeSeasonal('金', '水')); m.set('酉', makeSeasonal('金', '水'))
+  m.set('亥', makeSeasonal('水', '木')); m.set('子', makeSeasonal('水', '木'))
+  m.set('辰', makeSeasonal('土', '金')); m.set('戌', makeSeasonal('土', '金'))
+  m.set('丑', makeSeasonal('土', '金')); m.set('未', makeSeasonal('土', '金'))
   return m
-}
-export const GENERATIVE_CYCLE: Map<string, string> = buildGenerativeCycle()
+})()
 
-function buildOvercomingCycle(): Map<string, string> {
-  let m: Map<string, string> = new Map<string, string>()
-  m.set('木', '土'); m.set('土', '水'); m.set('水', '火'); m.set('火', '金'); m.set('金', '木')
-  return m
-}
-export const OVERCOMING_CYCLE: Map<string, string> = buildOvercomingCycle()
+// Five-element cycles
+export const GENERATIVE_CYCLE: Map<string, string> = new Map([
+  ['木', '火'], ['火', '土'], ['土', '金'], ['金', '水'], ['水', '木'],
+])
 
+export const OVERCOMING_CYCLE: Map<string, string> = new Map([
+  ['木', '土'], ['土', '水'], ['水', '火'], ['火', '金'], ['金', '木'],
+])
+
+// ============================================================
+// Five-element relation engine (shared by Ba Zi & I Ching)
+// ============================================================
+export interface ElementRelation {
+  label: string
+  relative: string
+  desc: string
+}
+
+// Ordered by element cycle: how 'self' relates to 'other'
+// q(我) is self element, p(彼) is other element
+export function getElementRelation(qSelf: string, pOther: string): ElementRelation {
+  if (qSelf === pOther) return { label: '比和', relative: '兄弟', desc: '同气相求，协力齐心。' }
+  if (GENERATIVE_CYCLE.get(pOther) === qSelf) return { label: '我生', relative: '子孙', desc: '我生者泄，当下虽有损耗，长远有利。' }
+  if (GENERATIVE_CYCLE.get(qSelf) === pOther) return { label: '生我', relative: '父母', desc: '生我者助，得外部相助或贵人提携。' }
+  if (OVERCOMING_CYCLE.get(qSelf) === pOther) return { label: '我克', relative: '妻财', desc: '我克者为财，事虽繁杂但可掌控。' }
+  if (OVERCOMING_CYCLE.get(pOther) === qSelf) return { label: '克我', relative: '官鬼', desc: '克我者制，受外部环境压制，宜退避守正。' }
+  return { label: '平平', relative: '比和', desc: '五行气息平和，无特殊利害。' }
+}
+
+// ============================================================
 // Trigram utilities
+// ============================================================
 export function getTrigramName(binary: string): string {
   if (binary === '111') return '乾'
   if (binary === '000') return '坤'
@@ -127,4 +199,31 @@ export function getTrigramNature(binary: string): string {
   if (binary === '001') return '山'
   if (binary === '110') return '泽'
   return ''
+}
+
+// ============================================================
+// Theme support
+// ============================================================
+export enum ThemeMode {
+  LIGHT = 'light',
+  DARK = 'dark'
+}
+
+export function themeColors(mode: ThemeMode): {
+  bg: string, surface: string, card: string, border: string,
+  textPrimary: string, textSecondary: string, textCaption: string,
+  red: string, gold: string, cardActive: string, paper: string
+} {
+  if (mode === ThemeMode.DARK) {
+    return {
+      bg: COLORS.DARK_BG, surface: COLORS.DARK_SURFACE, card: COLORS.DARK_CARD, border: COLORS.DARK_BORDER,
+      textPrimary: COLORS.DARK_TEXT_PRIMARY, textSecondary: COLORS.DARK_TEXT_SECONDARY, textCaption: COLORS.DARK_TEXT_CAPTION,
+      red: COLORS.DARK_RED, gold: COLORS.DARK_GOLD, cardActive: COLORS.DARK_CARD, paper: COLORS.DARK_BG
+    }
+  }
+  return {
+    bg: COLORS.WHITE, surface: COLORS.WHITE + '80', card: COLORS.WHITE + '80', border: COLORS.INK_BLACK + OP.FAINT,
+    textPrimary: COLORS.INK_BLACK, textSecondary: INK.BODY, textCaption: INK.CAPTION,
+    red: COLORS.IMPERIAL_RED, gold: COLORS.AMBER_GOLD, cardActive: COLORS.ACTIVE_CARD_BG, paper: COLORS.PAPER
+  }
 }
