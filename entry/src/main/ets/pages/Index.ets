@@ -2,6 +2,9 @@ import { COLORS, INK, RED, OP, applyTheme } from '../common/constants'
 import { BaziSection } from '../components/BaziSection'
 import { IChingSection } from '../components/IChingSection'
 import { CosmologySection } from '../components/CosmologySection'
+import { AlmanacSection } from '../components/AlmanacSection'
+import { SolarTermSection } from '../components/SolarTermSection'
+import { ZodiacSection } from '../components/ZodiacSection'
 import { AISettingsModal } from '../components/AISettingsModal'
 import {
   AIConfig, DEFAULT_AI_CONFIG, loadAIConfig, saveAIConfig, loadDarkMode, saveDarkMode
@@ -49,6 +52,12 @@ struct Index {
             BaziSection({ aiConfig: this.aiConfig }).padding({ left: 24, right: 24, bottom: 24 })
           } else if (this.activeTab === 'iching') {
             IChingSection({ aiConfig: this.aiConfig }).padding({ left: 24, right: 24, bottom: 24 })
+          } else if (this.activeTab === 'almanac') {
+            AlmanacSection().padding({ left: 24, right: 24, bottom: 24 })
+          } else if (this.activeTab === 'solar') {
+            SolarTermSection().padding({ left: 24, right: 24, bottom: 24 })
+          } else if (this.activeTab === 'zodiac') {
+            ZodiacSection().padding({ left: 24, right: 24, bottom: 24 })
           } else {
             CosmologySection().padding({ left: 24, right: 24, bottom: 24 })
           }
@@ -178,35 +187,28 @@ struct Index {
   }
 
   @Builder TabNavigation() {
-    Row() {
+    Scroll() {
       Row({ space: 6 }) {
-        Button('生辰八字').fontSize(13).fontWeight(FontWeight.Bold)
-          .fontColor(this.activeTab === 'bazi' ? COLORS.WHITE : INK.SECONDARY)
-          .backgroundColor(this.activeTab === 'bazi' ? COLORS.INK_BLACK : 'transparent')
-          .padding({ left: 16, right: 16, top: 11, bottom: 11 })
-          .borderRadius(14)
-          .animation({ duration: 200, curve: Curve.EaseOut })
-          .onClick(() => { this.activeTab = 'bazi' }).layoutWeight(1)
-        Button('周易起卦').fontSize(13).fontWeight(FontWeight.Bold)
-          .fontColor(this.activeTab === 'iching' ? COLORS.WHITE : INK.SECONDARY)
-          .backgroundColor(this.activeTab === 'iching' ? COLORS.INK_BLACK : 'transparent')
-          .padding({ left: 16, right: 16, top: 11, bottom: 11 })
-          .borderRadius(14)
-          .animation({ duration: 200, curve: Curve.EaseOut })
-          .onClick(() => { this.activeTab = 'iching' }).layoutWeight(1)
-        Button('易理图鉴').fontSize(13).fontWeight(FontWeight.Bold)
-          .fontColor(this.activeTab === 'cosmos' ? COLORS.WHITE : INK.SECONDARY)
-          .backgroundColor(this.activeTab === 'cosmos' ? COLORS.INK_BLACK : 'transparent')
-          .padding({ left: 16, right: 16, top: 11, bottom: 11 })
-          .borderRadius(14)
-          .animation({ duration: 200, curve: Curve.EaseOut })
-          .onClick(() => { this.activeTab = 'cosmos' }).layoutWeight(1)
+        this.TabButton('bazi', '生辰八字')
+        this.TabButton('iching', '周易起卦')
+        this.TabButton('almanac', '黄历')
+        this.TabButton('solar', '节气')
+        this.TabButton('zodiac', '生肖')
+        this.TabButton('cosmos', '易理图鉴')
       }
-      .width('100%').padding(5)
-      .backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
-      .borderRadius(18)
     }
-    .width('100%').justifyContent(FlexAlign.Center).padding({ left: 24, right: 24, bottom: 24 })
+    .scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off).edgeEffect(EdgeEffect.Spring)
+    .width('100%').padding({ left: 24, right: 24, bottom: 24 })
+  }
+
+  @Builder TabButton(tab: string, label: string) {
+    Button(label).fontSize(13).fontWeight(FontWeight.Bold)
+      .fontColor(this.activeTab === tab ? COLORS.WHITE : INK.SECONDARY)
+      .backgroundColor(this.activeTab === tab ? COLORS.INK_BLACK : COLORS.WHITE + '80')
+      .padding({ left: 16, right: 16, top: 11, bottom: 11 })
+      .borderRadius(14)
+      .animation({ duration: 200, curve: Curve.EaseOut })
+      .onClick(() => { this.activeTab = tab })
   }
 
   @Builder FooterSection() {

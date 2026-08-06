@@ -458,6 +458,154 @@ export function getSolarTermDate(year: number, idx: number): Date {
   return new Date((solarTermJd(year, idx) - 2440587.5) * 86400000)
 }
 
+export function getSolarTermName(idx: number): string {
+  return TERM_NAMES[idx]
+}
+
+// 干支年：以立春为界
+function getGanZhiYear(date: Date): number {
+  const jd = dateToJD(date)
+  const y = date.getFullYear()
+  if (jd < solarTermJd(y, 2)) { return y - 1 }
+  return y
+}
+
+// 当前所处节气（精确时刻判定）
+interface CurrentTerm {
+  name: string
+  idx: number
+}
+
+function getCurrentSolarTerm(date: Date): CurrentTerm {
+  const jd = dateToJD(date)
+  let idx = -1
+  let bestJd: number = -Infinity
+  for (let y = date.getFullYear() - 1; y <= date.getFullYear(); y++) {
+    for (let i = 0; i < TERM_NAMES.length; i++) {
+      const tj = solarTermJd(y, i)
+      if (tj <= jd && tj > bestJd) {
+        bestJd = tj
+        idx = i
+      }
+    }
+  }
+  if (idx < 0) { return { name: '冬至', idx: 23 } }
+  return { name: TERM_NAMES[idx], idx: idx }
+}
+
+// ============================================================
+// 黄历：建除十二神 / 宜忌 / 冲煞
+// ============================================================
+const JIAN_CHU_NAMES: string[] = ['建', '除', '满', '平', '定', '执', '破', '危', '成', '收', '开', '闭']
+const JIAN_CHU_YI: string[][] = [
+  ['出行', '上任', '祈福'], ['沐浴', '扫舍', '求医'], ['祭祀', '祈福', '结网'],
+  ['修造', '平治', '移徙'], ['订婚', '纳财', '安床'], ['捕捉', '狩猎', '安葬'],
+  ['破屋', '求医', '拆卸'], ['祈福', '祭祀', '安葬'], ['开业', '嫁娶', '入学'],
+  ['纳财', '入宅', '嫁娶'], ['开市', '出行', '纳财'], ['修造', '安葬', '祭祀'],
+]
+const JIAN_CHU_JI: string[][] = [
+  ['动土', '开仓', '安葬'], ['嫁娶', '开市', '远行'], ['安葬', '开市', '动土'],
+  ['开市', '纳财', '嫁娶'], ['诉讼', '出行', '开仓'], ['开市', '行船', '嫁娶'],
+  ['嫁娶', '出行', '开市'], ['出行', '开市', '动土'], ['诉讼', '安葬', '动土'],
+  ['安葬', '开市', '出行'], ['安葬', '动土', '伐木'], ['开市', '出行', '嫁娶'],
+]
+
+interface ChongSha {
+  chong: string
+  sha: string
+}
+
+function getChongSha(dayBranchIdx: number): ChongSha {
+  const chongIdx = (dayBranchIdx + 6) % 12
+  const b = dayBranchIdx
+  let sha = '南'
+  if (b === 2 || b === 6 || b === 10) { sha = '北' }       // 寅午戌
+  else if (b === 1 || b === 5 || b === 9) { sha = '东' }   // 巳酉丑
+  else if (b === 3 || b === 7 || b === 11) { sha = '西' }  // 亥卯未
+  return { chong: ZODIAC_NAMES[chongIdx], sha: sha }
+}
+
+export interface AlmanacInfo {
+  dateText: string
+  lunarText: string
+  yearStemBranch: string
+  yearZodiac: string
+  monthStemBranch: string
+  dayStemBranch: string
+  dayZodiac: string
+  solarTerm: string
+  isSolarTermDay: boolean
+  jianchu: string
+  jianchuDesc: string
+  yi: string[]
+  ji: string[]
+  chong: string
+  sha: string
+}
+
+export function getAlmanac(date: Date): AlmanacInfo {
+  const lunar = solarToLunar(date)
+  const ganZhiYear = getGanZhiYear(date)
+  const yearSBIdx = getYearStemBranchIndex(ganZhiYear)
+  const yearStemBranch = HEAVENLY_STEMS[yearSBIdx % 10] + EARTHLY_BRANCHES[yearSBIdx % 12]
+  const daySBIdx = getDayStemBranchIndex(date)
+  const dayStemBranch = HEAVENLY_STEMS[daySBIdx % 10] + EARTHLY_BRANCHES[daySBIdx % 12]
+  const dayBranchIdx = daySBIdx % 12
+
+  // 节气月（月建）
+  const birthJd = dateToJD(date)
+  let monthNum = 1
+  for (let y = ganZhiYear; y <= ganZhiYear + 1; y++) {
+    for (let j = 0; j < JIE_INDEXES.length; j++) {
+      if (birthJd >= solarTermJd(y, JIE_INDEXES[j])) {
+        monthNum = JIE_MONTHS[j]
+      }
+    }
+  }
+  const monthSBIdx = getMonthStemBranchIndex(yearSBIdx % 10, monthNum)
+  const monthStemBranch = HEAVENLY_STEMS[monthSBIdx % 10] + EARTHLY_BRANCHES[monthSBIdx % 12]
+  const monthBranchIdx = monthSBIdx % 12
+
+  // 建除十二神：正月建寅，月支与日支差决定
+  const jianchuSeq = ((dayBranchIdx - monthBranchIdx) % 12 + 12) % 12
+  const jianchu = JIAN_CHU_NAMES[jianchuSeq]
+  const yi = JIAN_CHU_YI[jianchuSeq]
+  const ji = JIAN_CHU_JI[jianchuSeq]
+
+  // 冲煞
+  const cs = getChongSha(dayBranchIdx)
+
+  // 节气
+  const term = getCurrentSolarTerm(date)
+  let isSolarTermDay = false
+  for (let i = 0; i < 24; i++) {
+    const t = getSolarTermDate(date.getFullYear(), i)
+    if (t.getUTCFullYear() === date.getFullYear() && t.getUTCMonth() === date.getMonth() &&
+      t.getUTCDate() === date.getDate()) {
+      isSolarTermDay = true
+      break
+    }
+  }
+
+  return {
+    dateText: date.getFullYear() + '年' + (date.getMonth() + 1) + '月' + date.getDate() + '日',
+    lunarText: (lunar.isLeapMonth ? '闰' : '') + LUNAR_MONTH_NAMES[lunar.month - 1] + '月' + lunarDayText(lunar.day),
+    yearStemBranch: yearStemBranch,
+    yearZodiac: ZODIAC_NAMES[yearSBIdx % 12],
+    monthStemBranch: monthStemBranch,
+    dayStemBranch: dayStemBranch,
+    dayZodiac: ZODIAC_NAMES[dayBranchIdx],
+    solarTerm: term.name,
+    isSolarTermDay: isSolarTermDay,
+    jianchu: jianchu,
+    jianchuDesc: '黄历建除十二神，主当日行事吉凶之基。',
+    yi: yi,
+    ji: ji,
+    chong: '冲' + cs.chong,
+    sha: '煞' + cs.sha
+  }
+}
+
 // ============================================================
 // 真太阳时 (True Solar Time) correction
 // ============================================================
@@ -472,11 +620,36 @@ function dayOfYear(date: Date): number {
  * Returns a new Date; may shift the calendar day when crossing midnight.
  */
 export function applyTrueSolarTime(date: Date, longitude: number): Date {
-  const n = dayOfYear(date)
-  const b = 2 * Math.PI * (n - 81) / 364
-  const eotMinutes = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b)
+  const eotMinutes = equationOfTime(date)
   const deltaMinutes = (120 - longitude) * 4 + eotMinutes
   return new Date(date.getTime() + deltaMinutes * 60000)
+}
+
+// 均时差（分钟）
+function equationOfTime(date: Date): number {
+  const n = dayOfYear(date)
+  const b = 2 * Math.PI * (n - 81) / 364
+  return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b)
+}
+
+export interface TrueSolarInfo {
+  correctedDate: Date      // 校正后的时刻
+  correctionMinutes: number // 校正量（分钟），真太阳时 = 北京时 + correctionMinutes
+  eotMinutes: number        // 均时差（分钟）
+  longitude: number         // 出生地东经
+}
+
+// 计算真太阳时详情（供界面展示）
+export function getTrueSolarTime(date: Date, longitude: number): TrueSolarInfo {
+  const eot = equationOfTime(date)
+  const delta = (120 - longitude) * 4 + eot
+  const corrected = new Date(date.getTime() + delta * 60000)
+  return {
+    correctedDate: corrected,
+    correctionMinutes: Math.round(delta),
+    eotMinutes: Math.round(eot * 10) / 10,
+    longitude: longitude
+  }
 }
 
 // ============================================================

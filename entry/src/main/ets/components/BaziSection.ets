@@ -1,6 +1,7 @@
 import { COLORS, ELEMENT_COLORS, ELEMENT_ORDER, INK, RED, OP } from '../common/constants'
-import { calculateBazi, applyTrueSolarTime } from '../model/lunar-service'
+import { calculateBazi, getTrueSolarTime, TrueSolarInfo } from '../model/lunar-service'
 import { BaziData, PillarData, ShenshaEntry, DayunCycle, MonthlyFate } from '../model/bazi-data'
+import { buildOfflineBaziReport } from '../services/offlineInterpreter'
 import {
   interpretMetaphysics, getOfflineBaziAnalysis, AIConfig, ChatMessage,
   QUESTION_CATEGORIES
@@ -21,7 +22,10 @@ export struct BaziSection {
   @State gender: string = 'male'
   @State useTrueSolar: boolean = false
   @State longitude: string = '120'
+  @State trueSolar: TrueSolarInfo | null = null
   @State result: BaziData | null = null
+  @State offlineReport: string = ''
+  @State showOffline: boolean = false
   @State loading: boolean = false
   @State error: string = ''
   @State chatHistory: ChatMessage[] = []
@@ -133,6 +137,7 @@ export struct BaziSection {
           .onClick(() => { this.showRecords = !this.showRecords })
       }.width('100%')
       this.PillarsTable()
+      if (this.trueSolar) { this.TrueSolarCard() }
       if (this.showRecords) { this.RecordsPanel() }
       // Sub-tabs for advanced analysis
       this.SubTabBar()
@@ -152,6 +157,7 @@ export struct BaziSection {
           .padding({ top: 10, bottom: 10 })
           .onClick(() => { this.chatHistory = [] })
       }.width('100%')
+      this.OfflineReportCard()
       // AI Chat
       AIChatPanel({
         aiLoading: this.aiLoading, chatHistory: $chatHistory,
@@ -161,6 +167,72 @@ export struct BaziSection {
         onClear: () => { this.chatHistory = [] }
       })
     }
+  }
+
+  @Builder TrueSolarCard() {
+    if (this.trueSolar) {
+      Column({ space: 8 }) {
+        Row({ space: 8 }) {
+          Text('真太阳时校正').fontSize(11).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
+          Text('TRUE SOLAR TIME').fontSize(8).fontColor(INK.PLACEHOLDER).fontWeight(FontWeight.Bold)
+        }.width('100%')
+        Row({ space: 16 }) {
+          Column({ space: 2 }) {
+            Text('出生地经度').fontSize(8).fontColor(INK.PLACEHOLDER)
+            Text(this.trueSolar!.longitude + '°E').fontSize(12).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+          }.alignItems(HorizontalAlign.Start)
+          Column({ space: 2 }) {
+            Text('均时差').fontSize(8).fontColor(INK.PLACEHOLDER)
+            Text((this.trueSolar!.eotMinutes >= 0 ? '+' : '') + this.trueSolar!.eotMinutes + ' 分钟')
+              .fontSize(12).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+          }.alignItems(HorizontalAlign.Start)
+          Column({ space: 2 }) {
+            Text('校正量').fontSize(8).fontColor(INK.PLACEHOLDER)
+            Text((this.trueSolar!.correctionMinutes >= 0 ? '+' : '') + this.trueSolar!.correctionMinutes + ' 分钟')
+              .fontSize(12).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
+          }.alignItems(HorizontalAlign.Start)
+          Blank().layoutWeight(1)
+          Column({ space: 2 }) {
+            Text('真太阳时').fontSize(8).fontColor(INK.PLACEHOLDER)
+            Text(this.pad2(this.trueSolar!.correctedDate.getHours()) + ':' + this.pad2(this.trueSolar!.correctedDate.getMinutes()))
+              .fontSize(16).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
+          }.alignItems(HorizontalAlign.End)
+        }.width('100%')
+        Text(this.date + ' ' + this.time + ' → 真太阳时 ' +
+          this.pad2(this.trueSolar!.correctedDate.getHours()) + ':' + this.pad2(this.trueSolar!.correctedDate.getMinutes()) +
+          '，时柱按真太阳时排')
+          .fontSize(9).fontColor(INK.SECONDARY).fontStyle(FontStyle.Italic)
+      }
+      .width('100%').padding(12).backgroundColor(COLORS.WHITE + '80')
+      .border({ width: 1, color: RED.BORDER }).borderRadius(12)
+    }
+  }
+
+  @Builder OfflineReportCard() {
+    Column({ space: 10 }) {
+      Row({ space: 8 }) {
+        Text('离线详析').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
+        Text('OFFLINE REPORT').fontSize(8).fontColor(INK.PLACEHOLDER).fontWeight(FontWeight.Bold)
+        Blank().layoutWeight(1)
+        Button(this.showOffline ? '收起' : '展开')
+          .fontSize(9).fontColor(COLORS.IMPERIAL_RED).backgroundColor(RED.BG_MEDIUM)
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .onClick(() => { this.showOffline = !this.showOffline })
+      }.width('100%')
+      Text('未配置 AI 也能获得完整分析：格局、五行、神煞、大运、流年一应俱全。')
+        .fontSize(9).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
+      if (this.showOffline && this.offlineReport.length > 0) {
+        Scroll() {
+          Text(this.offlineReport)
+            .fontSize(11).fontColor(INK.BODY).lineHeight(18)
+            .width('100%').padding(12)
+            .backgroundColor(COLORS.WHITE + '99')
+            .border({ width: 1, color: INK.HAIRLINE }).borderRadius(10)
+        }.height(380).scrollable(ScrollDirection.Vertical).scrollBar(BarState.Auto)
+      }
+    }
+    .width('100%').padding(14).backgroundColor(COLORS.ACTIVE_CARD_BG)
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
   }
 
   @Builder RecordsPanel() {
@@ -497,6 +569,10 @@ export struct BaziSection {
     return d
   }
 
+  pad2(n: number): string {
+    return String(n).padStart(2, '0')
+  }
+
   async handleCalculate() {
     if (!this.date) return
     this.loading = true
@@ -513,18 +589,22 @@ export struct BaziSection {
         hours, minutes
       )
 
+      let calcDate = fullDate
+      this.trueSolar = null
       if (this.useTrueSolar) {
         const lon = parseFloat(this.longitude)
         if (!isNaN(lon) && lon >= 70 && lon <= 150) {
-          fullDate = applyTrueSolarTime(fullDate, lon)
+          this.trueSolar = getTrueSolarTime(fullDate, lon)
+          calcDate = this.trueSolar.correctedDate
         } else {
           this.error = '经度需为 70–150 之间的东经度数，已按北京时间排盘。'
         }
       }
 
-      const data = calculateBazi(fullDate, this.gender as 'male' | 'female')
+      const data = calculateBazi(calcDate, this.gender as 'male' | 'female')
       this.result = data
       this.baseAnalysis = getOfflineBaziAnalysis(data.dayMaster)
+      this.offlineReport = buildOfflineBaziReport(data)
       this.chatHistory = []
       await this.saveRecord(data)
     } catch (e) {
@@ -601,7 +681,12 @@ export struct BaziSection {
         { role: 'assistant', content: this.baseAnalysis },
         ...this.chatHistory
       ]
-      const reply = await interpretMetaphysics(messages, this.aiConfig)
+      let reply: string
+      if (!this.aiConfig.apiKey) {
+        reply = this.offlineReport
+      } else {
+        reply = await interpretMetaphysics(messages, this.aiConfig)
+      }
       this.chatHistory = [...this.chatHistory, { role: 'assistant', content: reply }]
     } catch (_e) {
       this.chatHistory = [...this.chatHistory, { role: 'assistant', content: 'AI解析暂时不可用。' + this.baseAnalysis }]

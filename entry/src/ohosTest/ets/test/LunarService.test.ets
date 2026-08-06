@@ -1,8 +1,16 @@
 import { describe, it, expect } from '@ohos/hypium'
 import {
-  calculateBazi, applyTrueSolarTime, getTodayInfo, getYearStemBranch, getSolarTermDate
+  calculateBazi, applyTrueSolarTime, getTodayInfo, getYearStemBranch, getSolarTermDate,
+  getAlmanac, getTrueSolarTime
 } from '../../../../main/ets/model/lunar-service'
 import { getNayin } from '../../../../main/ets/model/bazi-data'
+import {
+  buildOfflineBaziReport, buildOfflineIChingReport
+} from '../../../../main/ets/services/offlineInterpreter'
+import {
+  GET_HEX_BY_BINARY, getTiYong, getLineDetails, getMutualHexagram,
+  getOppositeHexagram, getInverseHexagram, getChangedHexagram
+} from '../../../../main/ets/model/iching-data'
 
 export default function LunarServiceTest() {
   describe('LunarService_Test', () => {
@@ -137,6 +145,62 @@ export default function LunarServiceTest() {
       expect(info.lunarText.length).assertLarger(0)
       expect(info.hexName.length).assertLarger(0)
       expect(info.hexSymbol.length).assertLarger(0)
+    })
+
+    // -- 黄历信息完整性 --
+    it('almanac_is_complete', () => {
+      const info = getAlmanac(new Date())
+      expect(info.lunarText.length).assertLarger(0)
+      expect(info.dayStemBranch.length).assertEqual(2)
+      expect(info.monthStemBranch.length).assertEqual(2)
+      expect(info.jianchu.length).assertEqual(1)
+      expect(info.yi.length).assertLarger(0)
+      expect(info.ji.length).assertLarger(0)
+      expect(info.chong.length).assertLarger(1)
+      expect(info.sha.length).assertLarger(1)
+    })
+
+    // -- 真太阳时信息与校正一致性 --
+    it('true_solar_info_matches_correction', () => {
+      const base = new Date(2026, 5, 1, 12, 0)
+      const info = getTrueSolarTime(base, 120)
+      const diffMin = Math.round((info.correctedDate.getTime() - base.getTime()) / 60000)
+      expect(diffMin).assertEqual(info.correctionMinutes)
+      expect(Math.abs(info.correctionMinutes)).assertLarger(0) // 均时差非零
+      const west = getTrueSolarTime(base, 90)
+      expect(west.correctionMinutes).assertLarger(110)
+    })
+
+    // -- 离线八字报告详实 --
+    it('offline_bazi_report_detailed', () => {
+      const data = calculateBazi(new Date(2026, 5, 1, 12, 0), 'male')
+      const report = buildOfflineBaziReport(data)
+      expect(report.indexOf('日主')).assertLarger(-1)
+      expect(report.indexOf('格局')).assertLarger(-1)
+      expect(report.indexOf('五行分布')).assertLarger(-1)
+      expect(report.indexOf('大运')).assertLarger(-1)
+      expect(report.indexOf('流年')).assertLarger(-1)
+    })
+
+    // -- 离线卦象报告详实 --
+    it('offline_iching_report_detailed', () => {
+      const binary = '100010'
+      const moving = [0]
+      const hex = GET_HEX_BY_BINARY(binary)
+      const report = buildOfflineIChingReport({
+        originalHex: hex,
+        changedHex: GET_HEX_BY_BINARY(getChangedHexagram(binary, moving)),
+        mutualHex: GET_HEX_BY_BINARY(getMutualHexagram(binary)),
+        oppositeHex: GET_HEX_BY_BINARY(getOppositeHexagram(binary)),
+        inverseHex: GET_HEX_BY_BINARY(getInverseHexagram(binary)),
+        tiYong: getTiYong(binary, 0),
+        movingIndexes: moving,
+        lineDetails: getLineDetails(hex, moving)
+      })
+      expect(report.indexOf('卦辞')).assertLarger(-1)
+      expect(report.indexOf('动爻解读')).assertLarger(-1)
+      expect(report.indexOf('体用生克')).assertLarger(-1)
+      expect(report.indexOf('变卦')).assertLarger(-1)
     })
   })
 }

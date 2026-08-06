@@ -13,6 +13,7 @@ import { buildLiuYaoPan, LiuYaoLine, LiuYaoPan } from '../model/liuyao-engine'
 import {
   SavedIChingReading, saveIChingReading, loadIChingReadings, deleteIChingReading
 } from '../services/readingStore'
+import { buildOfflineIChingReport } from '../services/offlineInterpreter'
 import pasteboard from '@ohos.pasteboard'
 
 interface Line {
@@ -103,6 +104,8 @@ export struct IChingSection {
   @State history: DivinationResult[] = []
   @State records: SavedIChingReading[] = []
   @State showRecords: boolean = false
+  @State offlineReport: string = ''
+  @State showOffline: boolean = false
   @State liuyaoPan: LiuYaoPan | null = null  // 六爻排盘
   // Search state
   @State searchQuery: string = ''
@@ -391,8 +394,36 @@ export struct IChingSection {
           .padding({ top: 10, bottom: 10 })
           .onClick(() => { this.chatHistory = [] })
       }.width('100%')
+      this.OfflineReportCard()
       this.ChatContent()
     }
+  }
+
+  @Builder OfflineReportCard() {
+    Column({ space: 10 }) {
+      Row({ space: 8 }) {
+        Text('离线详析').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
+        Text('OFFLINE REPORT').fontSize(8).fontColor(INK.PLACEHOLDER).fontWeight(FontWeight.Bold)
+        Blank().layoutWeight(1)
+        Button(this.showOffline ? '收起' : '展开')
+          .fontSize(9).fontColor(COLORS.IMPERIAL_RED).backgroundColor(RED.BG_MEDIUM)
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .onClick(() => { this.showOffline = !this.showOffline })
+      }.width('100%')
+      Text('未配置 AI 也能获得完整解读：卦辞、彖象、动爻、体用、互错综一应俱全。')
+        .fontSize(9).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
+      if (this.showOffline && this.offlineReport.length > 0) {
+        Scroll() {
+          Text(this.offlineReport)
+            .fontSize(11).fontColor(INK.BODY).lineHeight(18)
+            .width('100%').padding(12)
+            .backgroundColor(COLORS.WHITE + '99')
+            .border({ width: 1, color: INK.HAIRLINE }).borderRadius(10)
+        }.height(380).scrollable(ScrollDirection.Vertical).scrollBar(BarState.Auto)
+      }
+    }
+    .width('100%').padding(14).backgroundColor(COLORS.ACTIVE_CARD_BG)
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
   }
 
   // ========== 六爻排盘表 (京房纳甲系统) ==========
@@ -774,6 +805,16 @@ export struct IChingSection {
   applyResult(res: DivinationResult, recordIt: boolean): void {
     this.result = res
     this.baseAnalysis = getOfflineIChingAnalysis(res.originalBinary)
+    this.offlineReport = buildOfflineIChingReport({
+      originalHex: res.originalHex,
+      changedHex: res.changedHex,
+      mutualHex: res.mutualHex,
+      oppositeHex: res.oppositeHex,
+      inverseHex: res.inverseHex,
+      tiYong: res.tiYong,
+      movingIndexes: res.movingIndexes,
+      lineDetails: res.lineDetails
+    })
     this.chatHistory = []
     this.history = [res, ...this.history.slice(0, 9)]
 
@@ -902,7 +943,12 @@ export struct IChingSection {
         { role: 'assistant', content: this.baseAnalysis },
         ...this.chatHistory
       ]
-      const reply = await interpretMetaphysics(messages, this.aiConfig)
+      let reply: string
+      if (!this.aiConfig.apiKey) {
+        reply = this.offlineReport
+      } else {
+        reply = await interpretMetaphysics(messages, this.aiConfig)
+      }
       this.chatHistory = [...this.chatHistory, { role: 'assistant', content: reply }]
     } catch (_e) {
       this.chatHistory = [...this.chatHistory, { role: 'assistant', content: 'AI解析暂时不可用。' + this.baseAnalysis }]
