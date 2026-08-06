@@ -1,5 +1,29 @@
 {
   "app": {
+    // ============================================================
+    // 签名配置（Signing Configs）
+    // 最简单的方式：DevEco Studio 打开工程后，
+    //   File → Project Structure → Signing Configs
+    //   → 勾选 "Automatically generate signature"（需登录华为开发者账号）
+    // IDE 会自动在 AGC（AppGallery Connect）注册 bundleName 并回填下方结构。
+    //
+    // 手动配置示例（将证书文件放到本机任意路径后填写）：
+    // "signingConfigs": [
+    //   {
+    //     "name": "default",
+    //     "type": "HarmonyOS",
+    //     "material": {
+    //       "certpath": "C:/Users/34745/sign/tiandao.cer",
+    //       "storePassword": "你的store密码",
+    //       "keyAlias": "debugKey",
+    //       "keyPassword": "你的key密码",
+    //       "profile": "C:/Users/34745/sign/tiandao.p7b",
+    //       "signAlg": "SHA256withECDSA",
+    //       "storeFile": "C:/Users/34745/sign/tiandao.p12"
+    //     }
+    //   }
+    // ],
+    // ============================================================
     "signingConfigs": [],
     "products": [
       {
