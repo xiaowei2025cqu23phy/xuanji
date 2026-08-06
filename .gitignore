@@ -10,3 +10,14 @@
 /.clang-tidy
 **/.test
 /.appanalyzer
+
+# 旧 IDE 工程残留（嵌套目录）
+/tian-dao-xuan-ji-harmony/
+
+# 预览缓存
+/entry/.preview/
+/entry/.test/
+
+# 构建产物
+*.hap
+*.app

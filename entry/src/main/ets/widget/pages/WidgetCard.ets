@@ -27,19 +27,20 @@ struct WidgetCard {
     // Simple date display
     this.currentDate = y + '年' + m + '月' + d + '日'
 
-    // Day stem-branch (simplified)
-    const stemIdx = ((y - 4) * 5 + (m - 1) * 2 + d) % 10
-    const branchIdx = ((y - 4) * 7 + (m - 1) * 2 + d + 3) % 12
     const stems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
     const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
     const zodiacNames = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪']
 
-    this.dayStemBranch = stems[(stemIdx % 10 + 10) % 10] + branches[(branchIdx % 12 + 12) % 12]
+    // Day stem-branch: continuous 60-day cycle from 1900-01-01 (甲戌日, index 10)
+    const epoch = new Date(1900, 0, 1)
+    const diffDays = Math.floor((now.getTime() - epoch.getTime()) / 86400000)
+    const dayIdx = ((diffDays % 60) + 60 + 10) % 60
+    this.dayStemBranch = stems[dayIdx % 10] + branches[dayIdx % 12]
     this.yearStemBranch = stems[((y - 4) % 10 + 10) % 10] + branches[((y - 4) % 12 + 12) % 12]
     this.zodiac = zodiacNames[((y - 4) % 12 + 12) % 12]
 
-    // Daily hexagram (simplified: use date as seed to pick one of 64)
-    const hexIdx = (y * 365 + m * 31 + d) % 64
+    // Daily hexagram: tied to the day sexagenary index
+    const hexIdx = dayIdx % 64
     const bin = hexIdx.toString(2).padStart(6, '0')
     this.dayHexagram = bin
 

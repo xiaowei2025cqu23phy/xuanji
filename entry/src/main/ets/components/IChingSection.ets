@@ -10,6 +10,10 @@ import {
 } from '../services/aiService'
 import { AIChatPanel } from './shared/AIChatPanel'
 import { buildLiuYaoPan, LiuYaoLine, LiuYaoPan } from '../model/liuyao-engine'
+import {
+  SavedIChingReading, saveIChingReading, loadIChingReadings, deleteIChingReading
+} from '../services/readingStore'
+import pasteboard from '@ohos.pasteboard'
 
 interface Line {
   value: number
@@ -83,6 +87,7 @@ struct MiniHexagram {
 @Component
 export struct IChingSection {
   @Prop aiConfig: AIConfig
+  @StorageLink('uiDark') isDark: boolean = false
   @State method: string = 'coin'
   @State lines: Line[] = []
   @State result: DivinationResult | null = null
@@ -96,11 +101,17 @@ export struct IChingSection {
   @State number2: string = ''
   @State number3: string = ''
   @State history: DivinationResult[] = []
+  @State records: SavedIChingReading[] = []
+  @State showRecords: boolean = false
   @State liuyaoPan: LiuYaoPan | null = null  // 六爻排盘
   // Search state
   @State searchQuery: string = ''
   @State searchResults: Hexagram[] = []
   @State showSearch: boolean = false
+
+  async aboutToAppear() {
+    this.records = await loadIChingReadings()
+  }
 
   build() {
     Column({ space: 24 }) {
@@ -131,6 +142,17 @@ export struct IChingSection {
           .onClick(() => { this.method = 'manual'; this.resetDivination() })
       }.width('100%').justifyContent(FlexAlign.Center)
 
+      // Persistent records
+      Row({ space: 8 }) {
+        Text('我的记录').fontSize(10).fontColor(INK.CAPTION).fontWeight(FontWeight.Bold)
+        Blank().layoutWeight(1)
+        Button(this.showRecords ? '收起' : '展开 (' + this.records.length + ')')
+          .fontSize(9).fontColor(COLORS.IMPERIAL_RED).backgroundColor(RED.BG_MEDIUM)
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .onClick(() => { this.showRecords = !this.showRecords })
+      }.width('100%')
+      if (this.showRecords) { this.RecordsPanel() }
+
       // Method-specific input
       this.InputForMethod()
 
@@ -151,7 +173,7 @@ export struct IChingSection {
 
       // History
       if (this.history.length > 0) { this.HistoryContent() }
-    }.width('100%')
+    }.width('100%').backgroundColor(this.isDark ? COLORS.PAPER : COLORS.PAPER)
   }
 
   resetDivination(): void {
@@ -217,26 +239,9 @@ export struct IChingSection {
 
   showHexagramDetail(hex: Hexagram): void {
     // Build a synthetic divination result to display the searched hexagram
-    const res: DivinationResult = {
-      originalBinary: hex.binary,
-      movingIndexes: [],
-      originalHex: hex,
-      mutualHex: GET_HEX_BY_BINARY(getMutualHexagram(hex.binary)),
-      oppositeHex: GET_HEX_BY_BINARY(getOppositeHexagram(hex.binary)),
-      inverseHex: GET_HEX_BY_BINARY(getInverseHexagram(hex.binary)),
-      tiYong: getTiYong(hex.binary, null),
-      lineDetails: getLineDetails(hex)
-    }
-    this.result = res
-    this.baseAnalysis = getOfflineIChingAnalysis(hex.binary)
-    this.chatHistory = []
     this.method = '' // clear method
     this.lines = []
-    // Build liuyao pan
-    const now = new Date()
-    const daySB = this.computeDayStemBranch(now)
-    const monthSB = this.computeMonthStemBranch(now)
-    this.liuyaoPan = buildLiuYaoPan(hex.binary, [], daySB.stem, daySB.branch, monthSB.stem, monthSB.branch)
+    this.applyResult(this.buildResultFromBinary(hex.binary, []), false)
   }
 
   // ========== Method inputs ==========
@@ -376,6 +381,16 @@ export struct IChingSection {
       if (this.result) { this.TiYongCard() }
       // 爻位详情
       if (this.result && this.result.originalHex.lines) { this.LineDetailsContent() }
+      Row({ space: 12 }) {
+        Button('复制卦象').fontSize(11).fontWeight(FontWeight.Bold)
+          .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK).layoutWeight(1)
+          .padding({ top: 10, bottom: 10 })
+          .onClick(() => { this.copyResult() })
+        Button('清空对话').fontSize(11).fontWeight(FontWeight.Bold)
+          .fontColor(INK.LABEL).backgroundColor(INK.BG_FAINT).layoutWeight(1)
+          .padding({ top: 10, bottom: 10 })
+          .onClick(() => { this.chatHistory = [] })
+      }.width('100%')
       this.ChatContent()
     }
   }
@@ -652,7 +667,8 @@ export struct IChingSection {
       chatHistory: $chatHistory,
       activeCategory: this.activeCategory,
       onCategoryChange: (catId: string) => { this.activeCategory = catId },
-      onSend: (text: string) => { this.sendFollowUp(text) }
+      onSend: (text: string) => { this.sendFollowUp(text) },
+      onClear: () => { this.chatHistory = [] }
     })
   }
 
@@ -671,11 +687,39 @@ export struct IChingSection {
         .width('100%').padding(12)
         .backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
         .onClick(() => {
-          this.result = item
-          this.baseAnalysis = getOfflineIChingAnalysis(item.originalBinary)
+          this.applyResult(item, false)
         })
       }, (_item: DivinationResult, idx: number) => idx.toString())
     }.width('100%')
+  }
+
+  @Builder RecordsPanel() {
+    Column({ space: 8 }) {
+      if (this.records.length === 0) {
+        Text('暂无保存的记录，起卦后将自动保存。')
+          .fontSize(10).fontColor(INK.PLACEHOLDER).padding(12)
+      } else {
+        ForEach(this.records, (rec: SavedIChingReading) => {
+          Row({ space: 8 }) {
+            Column({ space: 2 }) {
+              Text(rec.hexagramSymbol + ' ' + rec.hexagramName + ' · 第' + rec.hexagramNumber + '卦')
+                .fontSize(11).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+              Text((rec.changedName ? rec.hexagramName + '→' + rec.changedName : rec.judgement) +
+                ' · ' + rec.movingCount + '动爻')
+                .fontSize(9).fontColor(INK.SECONDARY).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+            }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+            Button('恢复').fontSize(9).fontColor(COLORS.IMPERIAL_RED)
+              .backgroundColor(RED.BG_MEDIUM).padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .onClick(() => { this.restoreRecord(rec) })
+            Button('删除').fontSize(9).fontColor(INK.SECONDARY)
+              .backgroundColor(INK.BG_FAINT).padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .onClick(() => { this.removeRecord(rec) })
+          }
+          .width('100%').padding(10).backgroundColor(COLORS.WHITE + '99')
+          .border({ width: 1, color: INK.HAIRLINE }).borderRadius(8)
+        }, (rec: SavedIChingReading) => rec.id)
+      }
+    }.width('100%').padding(12).backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE })
   }
 
   // ========== Logic ==========
@@ -706,12 +750,14 @@ export struct IChingSection {
     const binary = this.lines.map((l: Line) => l.type === 'yang' ? '1' : '0').join('')
     const movingIndexes: number[] = []
     this.lines.forEach((l: Line, i: number) => { if (l.isMoving) movingIndexes.push(i) })
+    this.applyResult(this.buildResultFromBinary(binary, movingIndexes), true)
+  }
 
+  buildResultFromBinary(binary: string, movingIndexes: number[]): DivinationResult {
     const originalHex = GET_HEX_BY_BINARY(binary)
     const changedBin = movingIndexes.length > 0 ? getChangedHexagram(binary, movingIndexes) : undefined
     const changedHex = changedBin ? GET_HEX_BY_BINARY(changedBin) : undefined
-
-    const res: DivinationResult = {
+    return {
       originalBinary: binary,
       changedBinary: changedBin,
       movingIndexes: movingIndexes,
@@ -723,8 +769,11 @@ export struct IChingSection {
       tiYong: getTiYong(binary, movingIndexes.length > 0 ? movingIndexes[0] : null),
       lineDetails: getLineDetails(originalHex, movingIndexes)
     }
+  }
+
+  applyResult(res: DivinationResult, recordIt: boolean): void {
     this.result = res
-    this.baseAnalysis = getOfflineIChingAnalysis(binary)
+    this.baseAnalysis = getOfflineIChingAnalysis(res.originalBinary)
     this.chatHistory = []
     this.history = [res, ...this.history.slice(0, 9)]
 
@@ -732,7 +781,65 @@ export struct IChingSection {
     const now = new Date()
     const daySB = this.computeDayStemBranch(now)
     const monthSB = this.computeMonthStemBranch(now)
-    this.liuyaoPan = buildLiuYaoPan(binary, movingIndexes, daySB.stem, daySB.branch, monthSB.stem, monthSB.branch)
+    this.liuyaoPan = buildLiuYaoPan(res.originalBinary, res.movingIndexes, daySB.stem, daySB.branch, monthSB.stem, monthSB.branch)
+
+    if (recordIt) {
+      this.saveRecord(res)
+    }
+  }
+
+  async saveRecord(res: DivinationResult) {
+    const rec: SavedIChingReading = {
+      id: 'i' + Date.now() + Math.floor(Math.random() * 10000),
+      timestamp: Date.now(),
+      method: this.method || 'coin',
+      binary: res.originalBinary,
+      moving: JSON.stringify(res.movingIndexes),
+      hexagramName: res.originalHex.name,
+      hexagramSymbol: res.originalHex.symbol,
+      hexagramNumber: res.originalHex.number,
+      judgement: res.originalHex.judgement,
+      changedName: res.changedHex ? res.changedHex.name : undefined,
+      changedSymbol: res.changedHex ? res.changedHex.symbol : undefined,
+      movingCount: res.movingIndexes.length,
+      tiYongRelation: res.tiYong.relation
+    }
+    await saveIChingReading(rec)
+    this.records = [rec, ...this.records].slice(0, 20)
+  }
+
+  async restoreRecord(rec: SavedIChingReading) {
+    let moving: number[] = []
+    try {
+      moving = JSON.parse(rec.moving) as number[]
+    } catch (_e) {
+      moving = []
+    }
+    this.applyResult(this.buildResultFromBinary(rec.binary, moving), false)
+  }
+
+  async removeRecord(rec: SavedIChingReading) {
+    await deleteIChingReading(rec.id)
+    this.records = this.records.filter(r => r.id !== rec.id)
+  }
+
+  copyResult(): void {
+    if (!this.result) return
+    const r = this.result
+    let text = '【天道玄机 · 周易起卦】\n' +
+      '本卦：' + r.originalHex.symbol + ' ' + r.originalHex.name + '（第' + r.originalHex.number + '卦）\n' +
+      '卦辞：' + r.originalHex.judgement + '\n' +
+      '释义：' + r.originalHex.meaning + '\n'
+    if (r.changedHex) { text += '变卦：' + r.changedHex.symbol + ' ' + r.changedHex.name + '\n' }
+    text += '体用：' + r.tiYong.ti + '(' + r.tiYong.tiElement + ') 为体，' +
+      r.tiYong.yong + '(' + r.tiYong.yongElement + ') 为用 · ' + r.tiYong.relation + '\n' +
+      '—— 天道玄机 · 仅供文化娱乐参考'
+    const data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text)
+    pasteboard.getSystemPasteboard().setData(data).then(() => {
+      this.getUIContext().getPromptAction().showToast({ message: '卦象结果已复制' })
+    }).catch(() => {
+      this.getUIContext().getPromptAction().showToast({ message: '复制失败' })
+    })
   }
 
   calculateNumberDivination(): void {

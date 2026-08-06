@@ -14,6 +14,8 @@ export interface SavedBaziReading {
   date: string
   time: string
   gender: string
+  useTrueSolar?: boolean
+  longitude?: string
   yearPillar: string
   monthPillar: string
   dayPillar: string
@@ -27,6 +29,8 @@ export interface SavedIChingReading {
   id: string
   timestamp: number
   method: string
+  binary: string            // original hexagram binary (for restoring)
+  moving: string            // JSON stringified moving indexes
   hexagramName: string
   hexagramSymbol: string
   hexagramNumber: number

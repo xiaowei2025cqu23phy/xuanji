@@ -1,7 +1,8 @@
 import { UIAbility, Want, AbilityConstant } from '@kit.AbilityKit'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { window } from '@kit.ArkUI'
-import { initAIConfig } from '../services/aiService'
+import { applyTheme } from '../common/constants'
+import { initAIConfig, loadDarkMode } from '../services/aiService'
 import { initReadingStore } from '../services/readingStore'
 
 export default class EntryAbility extends UIAbility {
@@ -10,6 +11,13 @@ export default class EntryAbility extends UIAbility {
     // Initialize persistent services with application context
     initAIConfig(this.context)
     initReadingStore(this.context)
+    this.initTheme()
+  }
+
+  private async initTheme(): Promise<void> {
+    const dark = await loadDarkMode()
+    AppStorage.setOrCreate('uiDark', dark)
+    applyTheme(dark)
   }
 
   onDestroy(): void {

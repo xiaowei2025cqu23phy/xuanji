@@ -1,9 +1,12 @@
-import { COLORS, INK, OP } from '../common/constants'
-import { AIConfig, AI_PROVIDERS, DEFAULT_AI_CONFIG, AIProvider, ProviderInfo } from '../services/aiService'
+import { COLORS, INK, OP, applyTheme } from '../common/constants'
+import {
+  AIConfig, AI_PROVIDERS, DEFAULT_AI_CONFIG, AIProvider, ProviderInfo, saveDarkMode
+} from '../services/aiService'
 
 @CustomDialog
 export struct AISettingsModal {
   controller: CustomDialogController
+  @StorageLink('uiDark') isDark: boolean = false
   @State localConfig: AIConfig = DEFAULT_AI_CONFIG
   onSave?: (config: AIConfig) => void
 
@@ -13,8 +16,11 @@ export struct AISettingsModal {
     Column() {
       // Header
       Row() {
-        Text('AI服务配置 (AI Settings)')
-          .fontSize(14).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK).layoutWeight(1)
+        Column({ space: 4 }) {
+          Text('AI服务配置 (AI Settings)')
+            .fontSize(14).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
+          Text('连接大模型，解锁深度命理解析').fontSize(9).fontColor(INK.PLACEHOLDER)
+        }.alignItems(HorizontalAlign.Start).layoutWeight(1)
         Text('✕').fontSize(18).fontColor(INK.SECONDARY)
           .onClick(() => { this.controller.close() })
       }
@@ -32,10 +38,13 @@ export struct AISettingsModal {
                 GridItem() {
                   Column({ space: 4 }) {
                     Text(p.label.split(' ')[0]).fontSize(11).fontWeight(FontWeight.Bold)
+                      .fontColor(this.localConfig.provider === p.id ? COLORS.WHITE : COLORS.INK_BLACK)
                     Text(p.id).fontSize(8).opacity(0.6)
+                      .fontColor(this.localConfig.provider === p.id ? COLORS.WHITE : INK.PLACEHOLDER)
                   }
                   .width('100%').padding(10)
                   .border({ width: 1, color: INK.FAINT })
+                  .borderRadius(10)
                   .backgroundColor(this.localConfig.provider === p.id ? COLORS.INK_BLACK : COLORS.WHITE)
                   .onClick(() => {
                     this.localConfig.provider = p.id as AIProvider
@@ -54,8 +63,8 @@ export struct AISettingsModal {
             TextInput({ placeholder: '输入您的 API Key...', text: this.localConfig.apiKey })
               .onChange((v: string) => { this.localConfig.apiKey = v })
               .type(InputType.Password).fontSize(11).padding(10)
-              .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.FAINT })
-            Text('提示：密钥仅保存在本地，不会上传至服务器。')
+              .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.FAINT }).borderRadius(10)
+            Text('密钥仅保存在本地设备，不会上传至任何服务器。')
               .fontSize(8).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
           }
 
@@ -65,7 +74,7 @@ export struct AISettingsModal {
             TextInput({ placeholder: '例如: gpt-4o, deepseek-chat...', text: this.localConfig.model })
               .onChange((v: string) => { this.localConfig.model = v })
               .fontSize(11).padding(10)
-              .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.FAINT })
+              .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.FAINT }).borderRadius(10)
           }
 
           // Base URL (custom provider only)
@@ -75,8 +84,34 @@ export struct AISettingsModal {
               TextInput({ placeholder: 'https://api.your-provider.com/v1', text: this.localConfig.baseUrl || '' })
                 .onChange((v: string) => { this.localConfig.baseUrl = v })
                 .fontSize(11).padding(10)
-                .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.FAINT })
+                .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.FAINT }).borderRadius(10)
             }
+          }
+
+          // Appearance
+          Column({ space: 8 }) {
+            Text('外观 (Appearance)').fontSize(10).fontColor(INK.LABEL).fontWeight(FontWeight.Bold)
+            Row({ space: 12 }) {
+              Text('深色模式').fontSize(11).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold).layoutWeight(1)
+              Text(this.isDark ? '开启' : '关闭').fontSize(9).fontColor(INK.PLACEHOLDER)
+              Toggle({ type: ToggleType.Switch, isOn: this.isDark })
+                .selectedColor(COLORS.IMPERIAL_RED)
+                .onChange((v: boolean) => {
+                  this.isDark = v
+                  AppStorage.setOrCreate('uiDark', v)
+                  applyTheme(v)
+                  saveDarkMode(v)
+                })
+            }
+            .width('100%').padding(10)
+            .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE }).borderRadius(10)
+          }
+
+          // Privacy note
+          Column({ space: 4 }) {
+            Text('隐私与免责').fontSize(10).fontColor(INK.LABEL).fontWeight(FontWeight.Bold)
+            Text('排盘数据仅在您主动发起 AI 解析时发送至所选服务商；所有命理内容仅供文化娱乐参考，不构成医疗、投资、法律或任何决策依据。')
+              .fontSize(8).fontColor(INK.PLACEHOLDER).lineHeight(14)
           }
         }
         .width('100%').padding(20)
@@ -87,11 +122,11 @@ export struct AISettingsModal {
       Row({ space: 12 }) {
         Button('取消').fontSize(11).fontWeight(FontWeight.Bold)
           .fontColor(INK.LABEL).backgroundColor(INK.BG_FAINT).layoutWeight(1)
-          .padding({ top: 12, bottom: 12 })
+          .padding({ top: 12, bottom: 12 }).borderRadius(12)
           .onClick(() => { this.controller.close() })
         Button('保存配置').fontSize(11).fontWeight(FontWeight.Bold)
           .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK).layoutWeight(1)
-          .padding({ top: 12, bottom: 12 })
+          .padding({ top: 12, bottom: 12 }).borderRadius(12)
           .onClick(() => {
             if (this.onSave) { this.onSave(this.localConfig) }
             this.controller.close()
@@ -104,6 +139,7 @@ export struct AISettingsModal {
     .width('90%')
     .backgroundColor(COLORS.WHITE)
     .border({ width: 1, color: INK.FAINT })
+    .borderRadius(20)
     .shadow({ radius: 24, color: COLORS.INK_BLACK + OP.MEDIUM })
   }
 }

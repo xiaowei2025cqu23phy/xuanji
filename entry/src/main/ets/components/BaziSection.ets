@@ -1,16 +1,26 @@
 import { COLORS, ELEMENT_COLORS, ELEMENT_ORDER, INK, RED, OP } from '../common/constants'
-import { calculateBazi } from '../model/lunar-service'
+import { calculateBazi, applyTrueSolarTime } from '../model/lunar-service'
 import { BaziData, PillarData, ShenshaEntry, DayunCycle, MonthlyFate } from '../model/bazi-data'
-import { interpretMetaphysics, getOfflineBaziAnalysis, AIConfig, ChatMessage, QUESTION_CATEGORIES } from '../services/aiService'
+import {
+  interpretMetaphysics, getOfflineBaziAnalysis, AIConfig, ChatMessage,
+  QUESTION_CATEGORIES
+} from '../services/aiService'
+import {
+  SavedBaziReading, saveBaziReading, loadBaziReadings, deleteBaziReading
+} from '../services/readingStore'
+import pasteboard from '@ohos.pasteboard'
 import { WuXingCycle } from './WuXingCycle'
 import { AIChatPanel } from './shared/AIChatPanel'
 
 @Component
 export struct BaziSection {
   @Prop aiConfig: AIConfig
+  @StorageLink('uiDark') isDark: boolean = false
   @State date: string = '2000-01-01'
   @State time: string = '12:00'
   @State gender: string = 'male'
+  @State useTrueSolar: boolean = false
+  @State longitude: string = '120'
   @State result: BaziData | null = null
   @State loading: boolean = false
   @State error: string = ''
@@ -19,6 +29,12 @@ export struct BaziSection {
   @State aiLoading: boolean = false
   @State activeCategory: string = 'general'
   @State activeSubTab: string = 'pillars' // pillars | nayin | shensha | dayun | liunian
+  @State records: SavedBaziReading[] = []
+  @State showRecords: boolean = false
+
+  async aboutToAppear() {
+    this.records = await loadBaziReadings()
+  }
 
   build() {
     Column({ space: 24 }) {
@@ -37,7 +53,11 @@ export struct BaziSection {
       Row({ space: 16 }) {
         Column({ space: 8 }) {
           Text('出生日期').fontSize(10).fontColor(INK.LABEL)
-          DatePicker({ start: new Date('1900-1-1'), end: new Date('2100-12-31'), selected: this.parseDate(this.date) })
+          DatePicker({
+            start: new Date('1900-1-1'),
+            end: new Date('2100-12-31'),
+            selected: this.parseDate(this.date)
+          })
             .onChange((value: DatePickerResult) => {
               this.date = `${value.year}-${String(value.month! + 1).padStart(2, '0')}-${String(value.day!).padStart(2, '0')}`
             })
@@ -50,6 +70,7 @@ export struct BaziSection {
             })
         }
       }.width('100%')
+
       Row({ space: 4 }) {
         Button('男 (Male)').fontSize(12).fontWeight(FontWeight.Bold)
           .backgroundColor(this.gender === 'male' ? COLORS.INK_BLACK : COLORS.WHITE)
@@ -64,13 +85,34 @@ export struct BaziSection {
           .padding({ left: 24, right: 24, top: 12, bottom: 12 })
           .onClick(() => { this.gender = 'female' })
       }
+
+      // 真太阳时 (optional)
+      Column({ space: 8 }) {
+        Row({ space: 8 }) {
+          Text('真太阳时校正').fontSize(10).fontColor(INK.LABEL).fontWeight(FontWeight.Bold)
+          Toggle({ type: ToggleType.Switch, isOn: this.useTrueSolar })
+            .selectedColor(COLORS.IMPERIAL_RED)
+            .onChange((v: boolean) => { this.useTrueSolar = v })
+          if (this.useTrueSolar) {
+            Text('东经').fontSize(9).fontColor(INK.PLACEHOLDER)
+            TextInput({ placeholder: '120', text: this.longitude })
+              .type(InputType.Number).fontSize(10).width(90)
+              .onChange((v: string) => { this.longitude = v })
+          }
+        }.width('100%')
+        Text('以 120°E 为基准，按出生地经度校正时辰（命理进阶功能，可选）')
+          .fontSize(8).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
+      }.width('100%').padding(10).backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE })
+
       Button('排 盘 解 析').fontSize(14).fontWeight(FontWeight.Bold)
         .fontColor(COLORS.IMPERIAL_RED).backgroundColor(COLORS.WHITE + '80')
         .border({ width: 1, color: RED.BORDER })
         .padding({ left: 48, right: 48, top: 14, bottom: 14 })
         .onClick(() => { this.handleCalculate() })
     }
-    .width('100%').padding(20).backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+    .width('100%').padding(20).backgroundColor(COLORS.WHITE + '80')
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
+    .shadow({ radius: 10, color: COLORS.INK_BLACK + '14', offsetY: 4 })
   }
 
   @Builder LoadingIndicator() {
@@ -82,7 +124,16 @@ export struct BaziSection {
 
   @Builder ResultsDisplay() {
     Column({ space: 20 }) {
+      Row({ space: 8 }) {
+        Text('四柱八字').fontSize(13).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION).layoutWeight(1)
+        Text('已保存到记录').fontSize(9).fontColor(COLORS.WOOD)
+        Button(this.showRecords ? '收起记录' : '历史记录 (' + this.records.length + ')')
+          .fontSize(9).fontColor(COLORS.IMPERIAL_RED).backgroundColor(RED.BG_MEDIUM)
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .onClick(() => { this.showRecords = !this.showRecords })
+      }.width('100%')
       this.PillarsTable()
+      if (this.showRecords) { this.RecordsPanel() }
       // Sub-tabs for advanced analysis
       this.SubTabBar()
       if (this.activeSubTab === 'pillars') { this.PillarsDetailView() }
@@ -90,24 +141,65 @@ export struct BaziSection {
       if (this.activeSubTab === 'shensha') { this.ShenshaCard() }
       if (this.activeSubTab === 'dayun') { this.DayunCard() }
       if (this.activeSubTab === 'liunian') { this.LiunianCard() }
+      // Actions
+      Row({ space: 12 }) {
+        Button('复制排盘').fontSize(11).fontWeight(FontWeight.Bold)
+          .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK).layoutWeight(1)
+          .padding({ top: 10, bottom: 10 })
+          .onClick(() => { this.copyResult() })
+        Button('清空对话').fontSize(11).fontWeight(FontWeight.Bold)
+          .fontColor(INK.LABEL).backgroundColor(INK.BG_FAINT).layoutWeight(1)
+          .padding({ top: 10, bottom: 10 })
+          .onClick(() => { this.chatHistory = [] })
+      }.width('100%')
       // AI Chat
       AIChatPanel({
         aiLoading: this.aiLoading, chatHistory: $chatHistory,
         activeCategory: this.activeCategory,
         onCategoryChange: (catId: string) => { this.activeCategory = catId },
-        onSend: (text: string) => { this.sendFollowUp(text) }
+        onSend: (text: string) => { this.sendFollowUp(text) },
+        onClear: () => { this.chatHistory = [] }
       })
     }
   }
 
+  @Builder RecordsPanel() {
+    Column({ space: 8 }) {
+      if (this.records.length === 0) {
+        Text('暂无保存的记录，排盘后将自动保存。')
+          .fontSize(10).fontColor(INK.PLACEHOLDER).padding(12)
+      } else {
+        ForEach(this.records, (rec: SavedBaziReading) => {
+          Row({ space: 8 }) {
+            Column({ space: 2 }) {
+              Text(rec.date + ' ' + rec.time + ' · ' + (rec.gender === 'male' ? '男' : '女'))
+                .fontSize(10).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+              Text('日主' + rec.dayMaster + (rec.structure ? ' · ' + rec.structure : ''))
+                .fontSize(9).fontColor(INK.SECONDARY).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+            }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+            Button('恢复').fontSize(9).fontColor(COLORS.IMPERIAL_RED)
+              .backgroundColor(RED.BG_MEDIUM).padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .onClick(() => { this.restoreRecord(rec) })
+            Button('删除').fontSize(9).fontColor(INK.SECONDARY)
+              .backgroundColor(INK.BG_FAINT).padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .onClick(() => { this.removeRecord(rec) })
+          }
+          .width('100%').padding(10).backgroundColor(COLORS.WHITE + '99')
+          .border({ width: 1, color: INK.HAIRLINE }).borderRadius(8)
+        }, (rec: SavedBaziReading) => rec.id)
+      }
+    }.width('100%').padding(12).backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE })
+  }
+
   @Builder SubTabBar() {
     Row({ space: 4 }) {
-      ForEach(['pillars','nayin','shensha','dayun','liunian'] as string[], (tab: string) => {
+      ForEach(['pillars', 'nayin', 'shensha', 'dayun', 'liunian'] as string[], (tab: string) => {
         Button(tab === 'pillars' ? '五行格局' : tab === 'nayin' ? '纳音' : tab === 'shensha' ? '神煞' : tab === 'dayun' ? '大运' : '流年')
           .fontSize(10).fontWeight(FontWeight.Bold)
           .fontColor(this.activeSubTab === tab ? COLORS.WHITE : INK.SECONDARY)
           .backgroundColor(this.activeSubTab === tab ? COLORS.INK_BLACK : INK.BG_FAINT)
           .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+          .borderRadius(14)
           .onClick(() => { this.activeSubTab = tab })
       }, (tab: string) => tab)
     }.width('100%')
@@ -115,17 +207,14 @@ export struct BaziSection {
 
   // --- Pillars Table ---
   @Builder PillarsTable() {
-    Column({ space: 8 }) {
-      Text('四柱八字').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
-      Grid() {
-        if (this.result) {
-          GridItem() { this.PillarItem('年柱', this.result!.year) }
-          GridItem() { this.PillarItem('月柱', this.result!.month) }
-          GridItem() { this.PillarItem('日柱', this.result!.day) }
-          GridItem() { this.PillarItem('时柱', this.result!.hour) }
-        }
-      }.columnsTemplate('1fr 1fr 1fr 1fr').rowsTemplate('1fr').width('100%')
-    }.width('100%')
+    Grid() {
+      if (this.result) {
+        GridItem() { this.PillarItem('年柱', this.result!.year) }
+        GridItem() { this.PillarItem('月柱', this.result!.month) }
+        GridItem() { this.PillarItem('日柱', this.result!.day) }
+        GridItem() { this.PillarItem('时柱', this.result!.hour) }
+      }
+    }.columnsTemplate('1fr 1fr 1fr 1fr').rowsTemplate('1fr').width('100%')
   }
 
   @Builder PillarItem(label: string, p: PillarData) {
@@ -141,15 +230,21 @@ export struct BaziSection {
         if (p.nayin) {
           Text(p.nayin).fontSize(8).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic).margin({ top: 2 })
         }
+        if (p.hiddenStems && p.hiddenStems.length > 0) {
+          Text('藏干 ' + p.hiddenStems.join(' ')).fontSize(8).fontColor(RED.LABEL)
+            .backgroundColor(RED.BG_FAINT).padding({ left: 6, right: 6, top: 1, bottom: 1 }).borderRadius(4)
+        }
       }.alignItems(HorizontalAlign.Center)
-    }.padding(12).border({ width: 1, color: INK.HAIRLINE })
+    }.padding(12).border({ width: 1, color: INK.HAIRLINE }).borderRadius(12)
+      .backgroundColor(COLORS.WHITE + '66')
   }
 
-  // --- Pillars detail: Five Elements + Day Master ---
+  // --- Pillars detail: Five Elements + Day Master + 命宫胎元 ---
   @Builder PillarsDetailView() {
     Column({ space: 16 }) {
       this.FiveElementsAnalysis()
       this.DayMasterCard()
+      this.MingGongTaiYuanCard()
     }
   }
 
@@ -170,7 +265,8 @@ export struct BaziSection {
         }.layoutWeight(1)
       }.width('100%')
     }
-    .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+    .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80')
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
   }
 
   @Builder DayMasterCard() {
@@ -183,7 +279,8 @@ export struct BaziSection {
         Text(this.result.dayMasterAnalysis).fontSize(12).fontColor(INK.BODY).lineHeight(20)
         Text(this.baseAnalysis).fontSize(11).fontColor(INK.SECONDARY).lineHeight(18).margin({ top: 4 })
         if (this.result.structure) {
-          Row({ space: 8 }) { Text('格局：').fontSize(10).fontColor(INK.PLACEHOLDER)
+          Row({ space: 8 }) {
+            Text('格局：').fontSize(10).fontColor(INK.PLACEHOLDER)
             Text(this.result.structure.name).fontSize(11).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
               .backgroundColor(RED.BG_MEDIUM).padding({ left: 10, right: 10, top: 3, bottom: 3 }).borderRadius(4)
           }.margin({ top: 4 })
@@ -191,7 +288,40 @@ export struct BaziSection {
         }
         Text(this.result.monthCommand.impact).fontSize(10).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic).margin({ top: 8 })
       }
-      .width('100%').padding(16).backgroundColor(COLORS.ACTIVE_CARD_BG).border({ width: 1, color: INK.HAIRLINE })
+      .width('100%').padding(16).backgroundColor(COLORS.ACTIVE_CARD_BG)
+      .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
+    }
+  }
+
+  @Builder MingGongTaiYuanCard() {
+    if (this.result && this.result.mingGong && this.result.taiYuan) {
+      Column({ space: 12 }) {
+        Row({ space: 8 }) {
+          Text('命宫 · 胎元').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
+          Text('（进阶格局参考）').fontSize(8).fontColor(INK.PLACEHOLDER)
+        }
+        Grid() {
+          GridItem() {
+            Column({ space: 4 }) {
+              Text('命宫').fontSize(9).fontColor(INK.PLACEHOLDER)
+              Text(this.result!.mingGong!.stem + this.result!.mingGong!.branch)
+                .fontSize(20).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+              Text('先天根基 · 性情禀赋').fontSize(8).fontColor(INK.SECONDARY)
+            }.padding(12).alignItems(HorizontalAlign.Center)
+          }
+          GridItem() {
+            Column({ space: 4 }) {
+              Text('胎元').fontSize(9).fontColor(INK.PLACEHOLDER)
+              Text(this.result!.taiYuan!.stem + this.result!.taiYuan!.branch)
+                .fontSize(20).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
+              Text('受孕月令 · 体质根基').fontSize(8).fontColor(INK.SECONDARY)
+            }.padding(12).alignItems(HorizontalAlign.Center)
+          }
+        }
+        .columnsTemplate('1fr 1fr').rowsTemplate('1fr').width('100%')
+      }
+      .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80')
+      .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
     }
   }
 
@@ -238,7 +368,8 @@ export struct BaziSection {
         Text('纳音将六十甲子配以五音十二律，以干支象数推演五行音律，反映先天禀赋与命运基调。')
           .fontSize(10).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic).lineHeight(16)
       }
-      .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+      .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80')
+      .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
     }
   }
 
@@ -264,11 +395,12 @@ export struct BaziSection {
             }
             .width('100%').padding(10)
             .backgroundColor(entry.starType === 'good' ? COLORS.WOOD + '08' : entry.starType === 'bad' ? RED.BG_FAINT : INK.BG_FAINT)
-            .border({ width: 1, color: INK.HAIRLINE })
+            .border({ width: 1, color: INK.HAIRLINE }).borderRadius(8)
           }, (_e: ShenshaEntry, idx: number) => idx.toString())
         }
       }
-      .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+      .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80')
+      .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
     }
   }
 
@@ -300,13 +432,14 @@ export struct BaziSection {
                 }.width('100%')
               }
               .width('100%').padding(10)
-              .backgroundColor(COLORS.WHITE + '99').border({ width: 1, color: INK.HAIRLINE })
+              .backgroundColor(COLORS.WHITE + '99').border({ width: 1, color: INK.HAIRLINE }).borderRadius(8)
             }, (_cycle: DayunCycle, idx: number) => idx.toString())
           }.width('100%')
         }
         .height(360).scrollable(ScrollDirection.Vertical).scrollBar(BarState.Auto)
       }
-      .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+      .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80')
+      .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
     }
   }
 
@@ -340,13 +473,14 @@ export struct BaziSection {
                 Text(mf.tenGod).fontSize(9).fontColor(mf.tenGod === '财星' || mf.tenGod === '印枭' ? COLORS.WOOD :
                   mf.tenGod === '官杀' ? COLORS.IMPERIAL_RED : COLORS.INK_BLACK)
               }
-              .padding(8).backgroundColor(COLORS.WHITE).border({ width: 1, color: INK.HAIRLINE })
+              .padding(8).backgroundColor(COLORS.WHITE).border({ width: 1, color: INK.HAIRLINE }).borderRadius(8)
             }
           }, (mf: MonthlyFate) => mf.month.toString())
         }
         .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr').width('100%')
       }
-      .width('100%').padding(16).backgroundColor(COLORS.ACTIVE_CARD_BG).border({ width: 1, color: INK.HAIRLINE })
+      .width('100%').padding(16).backgroundColor(COLORS.ACTIVE_CARD_BG)
+      .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
     }
   }
 
@@ -355,6 +489,7 @@ export struct BaziSection {
     const parts = dateStr.split('-').map(Number)
     return new Date(parts[0], parts[1] - 1, parts[2])
   }
+
   parseTime(timeStr: string): Date {
     const parts = timeStr.split(':').map(Number)
     const d = new Date()
@@ -364,20 +499,95 @@ export struct BaziSection {
 
   async handleCalculate() {
     if (!this.date) return
-    this.loading = true; this.error = ''; this.activeSubTab = 'pillars'
+    this.loading = true
+    this.error = ''
+    this.activeSubTab = 'pillars'
     try {
-      const fullDate = new Date(
-        Number(this.date.split('-')[0]), Number(this.date.split('-')[1]) - 1,
-        Number(this.date.split('-')[2]), Number(this.time.split('-')[0]),
-        Number(this.time.split('-')[1])
+      const tParts = this.time.split(':')
+      const hours = isNaN(Number(tParts[0])) ? 12 : Number(tParts[0])
+      const minutes = isNaN(Number(tParts[1])) ? 0 : Number(tParts[1])
+      let fullDate = new Date(
+        Number(this.date.split('-')[0]),
+        Number(this.date.split('-')[1]) - 1,
+        Number(this.date.split('-')[2]),
+        hours, minutes
       )
+
+      if (this.useTrueSolar) {
+        const lon = parseFloat(this.longitude)
+        if (!isNaN(lon) && lon >= 70 && lon <= 150) {
+          fullDate = applyTrueSolarTime(fullDate, lon)
+        } else {
+          this.error = '经度需为 70–150 之间的东经度数，已按北京时间排盘。'
+        }
+      }
+
       const data = calculateBazi(fullDate, this.gender as 'male' | 'female')
       this.result = data
       this.baseAnalysis = getOfflineBaziAnalysis(data.dayMaster)
       this.chatHistory = []
+      await this.saveRecord(data)
     } catch (e) {
       this.error = '排盘计算失败，请检查日期格式是否正确。'
-    } finally { this.loading = false }
+    } finally {
+      this.loading = false
+    }
+  }
+
+  async saveRecord(data: BaziData) {
+    const rec: SavedBaziReading = {
+      id: 'b' + Date.now() + Math.floor(Math.random() * 10000),
+      timestamp: Date.now(),
+      date: this.date,
+      time: this.time,
+      gender: this.gender,
+      useTrueSolar: this.useTrueSolar,
+      longitude: this.longitude,
+      yearPillar: data.year.stem + data.year.branch,
+      monthPillar: data.month.stem + data.month.branch,
+      dayPillar: data.day.stem + data.day.branch,
+      hourPillar: data.hour.stem + data.hour.branch,
+      dayMaster: data.dayMaster,
+      structure: data.structure ? data.structure.name : '',
+      fiveElements: JSON.stringify(Array.from(data.fiveElements.entries()))
+    }
+    await saveBaziReading(rec)
+    this.records = [rec, ...this.records].slice(0, 20)
+  }
+
+  async restoreRecord(rec: SavedBaziReading) {
+    this.date = rec.date
+    this.time = rec.time
+    this.gender = rec.gender
+    this.useTrueSolar = rec.useTrueSolar || false
+    if (rec.longitude) { this.longitude = rec.longitude }
+    await this.handleCalculate()
+  }
+
+  async removeRecord(rec: SavedBaziReading) {
+    await deleteBaziReading(rec.id)
+    this.records = this.records.filter(r => r.id !== rec.id)
+  }
+
+  copyResult(): void {
+    if (!this.result) return
+    const r = this.result
+    const text =
+      '【天道玄机 · 八字排盘】\n' +
+      '生辰：' + this.date + ' ' + this.time + '（' + (this.gender === 'male' ? '男' : '女') + '）\n' +
+      '四柱：' + r.year.stem + r.year.branch + ' ' + r.month.stem + r.month.branch + ' ' +
+      r.day.stem + r.day.branch + ' ' + r.hour.stem + r.hour.branch + '\n' +
+      '日主：' + r.dayMaster + '（' + (r.dayMasterAnalysis.split('属')[1] || '').split('。')[0] + '）\n' +
+      (r.structure ? '格局：' + r.structure.name + '\n' : '') +
+      (r.mingGong ? '命宫：' + r.mingGong.stem + r.mingGong.branch + '\n' : '') +
+      (r.taiYuan ? '胎元：' + r.taiYuan.stem + r.taiYuan.branch + '\n' : '') +
+      '—— 天道玄机 · 仅供文化娱乐参考'
+    const data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text)
+    pasteboard.getSystemPasteboard().setData(data).then(() => {
+      this.getUIContext().getPromptAction().showToast({ message: '排盘结果已复制' })
+    }).catch(() => {
+      this.getUIContext().getPromptAction().showToast({ message: '复制失败' })
+    })
   }
 
   async sendFollowUp(text: string) {
@@ -395,7 +605,9 @@ export struct BaziSection {
       this.chatHistory = [...this.chatHistory, { role: 'assistant', content: reply }]
     } catch (_e) {
       this.chatHistory = [...this.chatHistory, { role: 'assistant', content: 'AI解析暂时不可用。' + this.baseAnalysis }]
-    } finally { this.aiLoading = false }
+    } finally {
+      this.aiLoading = false
+    }
   }
 
   buildBaziContext(): string {
@@ -419,6 +631,8 @@ export struct BaziSection {
       ' 火' + (r.fiveElements.get('火') || 0) + ' 土' + (r.fiveElements.get('土') || 0) + '\n' +
       r.monthCommand.impact
     if (r.structure) { ctx += '\n格局：' + r.structure.name + '\n' + r.structure.description }
+    if (r.mingGong) { ctx += '\n命宫：' + r.mingGong.stem + r.mingGong.branch }
+    if (r.taiYuan) { ctx += '\n胎元：' + r.taiYuan.stem + r.taiYuan.branch }
     if (r.shensha && r.shensha.entries.length > 0) {
       ctx += '\n神煞：' + r.shensha.entries.map(e => e.name).join('、')
     }

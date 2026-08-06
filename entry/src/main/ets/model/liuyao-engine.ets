@@ -64,6 +64,13 @@ gNazhi.set('001', ['辰','午','申']); gNazhi.set('100', ['子','寅','辰'])
 gNazhi.set('011', ['丑','亥','酉']); gNazhi.set('101', ['卯','丑','亥'])
 gNazhi.set('000', ['未','巳','卯']); gNazhi.set('110', ['巳','卯','丑'])
 
+// 外卦纳支 (inner sequence advanced by 6 branches)
+let gNazhiOuter: Map<string, string[]> = new Map()
+gNazhiOuter.set('111', ['午','申','戌']); gNazhiOuter.set('010', ['申','戌','子'])
+gNazhiOuter.set('001', ['戌','子','寅']); gNazhiOuter.set('100', ['午','申','戌'])
+gNazhiOuter.set('011', ['未','巳','卯']); gNazhiOuter.set('101', ['酉','未','巳'])
+gNazhiOuter.set('000', ['丑','亥','酉']); gNazhiOuter.set('110', ['亥','酉','未'])
+
 // 纳干
 let gNagan: Map<string, string[]> = new Map()
 gNagan.set('乾', ['甲','甲','甲','壬','壬','壬']); gNagan.set('震', ['庚','庚','庚','庚','庚','庚'])
@@ -79,7 +86,7 @@ export function getNazhiForLine(binary: string, lineIdx: number): NazhiStemEntry
   let upperBin: string = binary.slice(3, 6)
   let pi: PalaceEntry = getPalaceInfo(binary)
   let lowerBranches: string[] | undefined = gNazhi.get(lowerBin)
-  let upperBranches: string[] | undefined = gNazhi.get(upperBin)
+  let upperBranches: string[] | undefined = gNazhiOuter.get(upperBin)
   let stems: string[] | undefined = gNagan.get(pi.palace)
   let stem: string = '?'
   if (stems !== undefined) { stem = stems[lineIdx] }

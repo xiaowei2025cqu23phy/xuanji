@@ -12,6 +12,13 @@ export interface BaziData {
   shensha?: ShenshaResult
   dayun?: DayunData
   liunian?: LiunianResult
+  mingGong?: PalaceInfo   // 命宫
+  taiYuan?: PalaceInfo    // 胎元
+}
+
+export interface PalaceInfo {
+  stem: string
+  branch: string
 }
 
 export interface PillarData {
@@ -20,6 +27,7 @@ export interface PillarData {
   element: string
   nayin?: string        // 纳音名称, e.g. "海中金"
   nayinElement?: string // 纳音五行, e.g. "金"
+  hiddenStems?: string[] // 地支藏干
 }
 
 export interface MonthCommand {

@@ -23,7 +23,11 @@ export default class WidgetFormAbility extends FormExtensionAbility {
       title: '天道玄机',
       subtitle: 'Heavenly Decrypt'
     })
-    formProvider.updateForm(formId, formData)
+    try {
+      formProvider.updateForm(formId, formData)
+    } catch (e) {
+      hilog.error(0x0000, 'TiandaoWidget', 'Update form failed: %{public}s', (e as Object).toString())
+    }
   }
 
   onChangeFormVisibility(newStatus: Record<string, number>): void {

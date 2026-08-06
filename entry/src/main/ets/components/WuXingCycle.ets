@@ -9,17 +9,29 @@ interface Point {
 export struct WuXingCycle {
   @Prop elements: Map<string, number>
   @Prop strengths: Map<string, string>
+  @StorageLink('uiDark') @Watch('onThemeChanged') isDark: boolean = false
 
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
+  private canvasReady: boolean = false
 
   build() {
     Stack() {
-      Canvas(this.context).width('100%').height('100%').onReady(() => { this.drawCycle() })
+      Canvas(this.context).width('100%').height('100%')
+        .onReady(() => {
+          this.canvasReady = true
+          this.drawCycle()
+        })
     }
     .width('100%').aspectRatio(1).constraintSize({ maxWidth: 400 })
     .backgroundColor(COLORS.WHITE + OP.X_LOW).borderRadius('50%')
     .border({ width: 1, color: COLORS.INK_BLACK + OP.X_FAINT }).padding(16)
+  }
+
+  onThemeChanged(): void {
+    if (this.canvasReady) {
+      this.drawCycle()
+    }
   }
 
   drawCycle() {

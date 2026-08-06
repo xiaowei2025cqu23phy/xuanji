@@ -35,11 +35,11 @@ export interface CategoryInfo {
 export const DEFAULT_AI_CONFIG: AIConfig = {
   provider: 'gemini',
   apiKey: '',
-  model: 'gemini-1.5-flash'
+  model: 'gemini-2.0-flash'
 }
 
 export const AI_PROVIDERS: ProviderInfo[] = [
-  { id: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-1.5-flash', baseUrl: '' },
+  { id: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-2.0-flash', baseUrl: '' },
   { id: 'openai', label: 'ChatGPT (OpenAI)', defaultModel: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1' },
   { id: 'deepseek', label: 'DeepSeek', defaultModel: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' },
   { id: 'qwen', label: '阿里通义千问 (Qwen)', defaultModel: 'qwen-plus', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
@@ -73,6 +73,7 @@ const KEY_PROVIDER = 'provider'
 const KEY_API_KEY = 'apiKey'
 const KEY_MODEL = 'model'
 const KEY_BASE_URL = 'baseUrl'
+const KEY_DARK_MODE = 'darkMode'
 
 let preferences: dataPreferences.Preferences | null = null
 
@@ -114,6 +115,29 @@ export async function saveAIConfig(config: AIConfig): Promise<void> {
   }
 }
 
+export async function loadDarkMode(): Promise<boolean> {
+  if (!preferences) {
+    return false
+  }
+  try {
+    return await preferences.get(KEY_DARK_MODE, false) as boolean
+  } catch (_e) {
+    return false
+  }
+}
+
+export async function saveDarkMode(dark: boolean): Promise<void> {
+  if (!preferences) {
+    return
+  }
+  try {
+    await preferences.put(KEY_DARK_MODE, dark)
+    await preferences.flush()
+  } catch (_e) {
+    // Persistence failed; keep current session value
+  }
+}
+
 // ----- HTTP client helpers -----
 const TIMEOUT_CONNECT = 15000  // 15s connection timeout
 const TIMEOUT_READ = 30000     // 30s read timeout
@@ -143,6 +167,12 @@ export async function interpretMetaphysics(
     messages = [{ role: 'user', content: promptOrMessages }]
   } else {
     messages = promptOrMessages
+  }
+
+  // Trim long conversations: keep the initial context prompt, then the most recent turns
+  const MAX_MESSAGES = 12
+  if (messages.length > MAX_MESSAGES) {
+    messages = [messages[0], ...messages.slice(-(MAX_MESSAGES - 1))]
   }
 
   if (config.provider === 'gemini') {

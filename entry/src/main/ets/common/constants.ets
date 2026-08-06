@@ -1,39 +1,120 @@
 // ============================================================
-// Color Palette - Ink Wash Aesthetic
+// Color Palette - Ink Wash Aesthetic (Light / Dark adaptive)
 // ============================================================
-export class COLORS {
-  // Light mode (ink wash)
-  static readonly PAPER: string = '#F4EFDF'
-  static readonly INK_BLACK: string = '#1A1A1C'
-  static readonly IMPERIAL_RED: string = '#B91C1C'
-  static readonly AMBER_GOLD: string = '#A67C52'
-  static readonly DARK_GOLD: string = '#5D4A2A'
-  static readonly ACTIVE_CARD_BG: string = '#FDFAF3'
-  static readonly WHITE: string = '#FFFFFF'
-  static readonly WOOD: string = '#2D5A27'
-  static readonly FIRE: string = '#C23B22'
-  static readonly EARTH: string = '#7C512D'
-  static readonly METAL: string = '#8A8A8A'
-  static readonly WATER: string = '#1E3A8A'
+interface ColorTokens {
+  PAPER: string
+  INK_BLACK: string
+  IMPERIAL_RED: string
+  AMBER_GOLD: string
+  DARK_GOLD: string
+  ACTIVE_CARD_BG: string
+  WHITE: string
+  WOOD: string
+  FIRE: string
+  EARTH: string
+  METAL: string
+  WATER: string
+  DARK_BG: string
+  DARK_SURFACE: string
+  DARK_CARD: string
+  DARK_BORDER: string
+  DARK_TEXT_PRIMARY: string
+  DARK_TEXT_SECONDARY: string
+  DARK_TEXT_CAPTION: string
+  DARK_RED: string
+  DARK_GOLD_BRIGHT: string
+  alpha: (hex: string, opacity: number) => string
+}
 
-  // Dark mode palette
-  static readonly DARK_BG: string = '#1A1A1C'
-  static readonly DARK_SURFACE: string = '#252528'
-  static readonly DARK_CARD: string = '#2C2C30'
-  static readonly DARK_BORDER: string = '#3A3A3C'
-  static readonly DARK_TEXT_PRIMARY: string = '#E8E8E1'
-  static readonly DARK_TEXT_SECONDARY: string = '#A0A0A0'
-  static readonly DARK_TEXT_CAPTION: string = '#6E6E6E'
-  static readonly DARK_RED: string = '#E04545'
-  static readonly DARK_GOLD_BRIGHT: string = '#C4A46C'
+// Light mode (ink wash)
+export const COLORS: ColorTokens = {
+  PAPER: '#F4EFDF',
+  INK_BLACK: '#1A1A1C',
+  IMPERIAL_RED: '#B91C1C',
+  AMBER_GOLD: '#A67C52',
+  DARK_GOLD: '#5D4A2A',
+  ACTIVE_CARD_BG: '#FDFAF3',
+  WHITE: '#FFFFFF',
+  WOOD: '#2D5A27',
+  FIRE: '#C23B22',
+  EARTH: '#7C512D',
+  METAL: '#8A8A8A',
+  WATER: '#1E3A8A',
 
-  // Alpha compositing
-  static alpha(hex: string, opacity: number): string {
+  // Dark mode palette (kept for reference / fallback)
+  DARK_BG: '#1A1A1C',
+  DARK_SURFACE: '#252528',
+  DARK_CARD: '#2C2C30',
+  DARK_BORDER: '#3A3A3C',
+  DARK_TEXT_PRIMARY: '#E8E8E1',
+  DARK_TEXT_SECONDARY: '#A0A0A0',
+  DARK_TEXT_CAPTION: '#6E6E6E',
+  DARK_RED: '#E04545',
+  DARK_GOLD_BRIGHT: '#C4A46C',
+
+  alpha: (hex: string, opacity: number): string => {
     const clamped = Math.max(0, Math.min(1, opacity))
     const byte = Math.round(clamped * 255)
     const suffix = byte.toString(16).toUpperCase().padStart(2, '0')
     return hex + suffix
   }
+}
+
+let darkModeActive: boolean = false
+
+export function isDarkMode(): boolean {
+  return darkModeActive
+}
+
+export function applyTheme(dark: boolean): void {
+  darkModeActive = dark
+  if (dark) {
+    // Paper-ink inversion: dark paper, light ink
+    COLORS.PAPER = '#131316'
+    COLORS.INK_BLACK = '#ECE8DC'
+    COLORS.IMPERIAL_RED = '#E05252'
+    COLORS.AMBER_GOLD = '#C9A46B'
+    COLORS.DARK_GOLD = '#C9A46B'
+    COLORS.ACTIVE_CARD_BG = '#26262B'
+    COLORS.WHITE = '#202024'
+    COLORS.WOOD = '#4C8A45'
+    COLORS.FIRE = '#D9543B'
+    COLORS.EARTH = '#A97845'
+    COLORS.METAL = '#B4B4B4'
+    COLORS.WATER = '#5B82D8'
+    COLORS.DARK_BG = '#131316'
+    COLORS.DARK_SURFACE = '#202024'
+    COLORS.DARK_CARD = '#26262B'
+    COLORS.DARK_BORDER = '#3A3A3C'
+    COLORS.DARK_TEXT_PRIMARY = '#ECE8DC'
+    COLORS.DARK_TEXT_SECONDARY = '#B0B0B0'
+    COLORS.DARK_TEXT_CAPTION = '#7A7A7A'
+    COLORS.DARK_RED = '#E05252'
+    COLORS.DARK_GOLD_BRIGHT = '#C9A46B'
+  } else {
+    COLORS.PAPER = '#F4EFDF'
+    COLORS.INK_BLACK = '#1A1A1C'
+    COLORS.IMPERIAL_RED = '#B91C1C'
+    COLORS.AMBER_GOLD = '#A67C52'
+    COLORS.DARK_GOLD = '#5D4A2A'
+    COLORS.ACTIVE_CARD_BG = '#FDFAF3'
+    COLORS.WHITE = '#FFFFFF'
+    COLORS.WOOD = '#2D5A27'
+    COLORS.FIRE = '#C23B22'
+    COLORS.EARTH = '#7C512D'
+    COLORS.METAL = '#8A8A8A'
+    COLORS.WATER = '#1E3A8A'
+    COLORS.DARK_BG = '#1A1A1C'
+    COLORS.DARK_SURFACE = '#252528'
+    COLORS.DARK_CARD = '#2C2C30'
+    COLORS.DARK_BORDER = '#3A3A3C'
+    COLORS.DARK_TEXT_PRIMARY = '#E8E8E1'
+    COLORS.DARK_TEXT_SECONDARY = '#A0A0A0'
+    COLORS.DARK_TEXT_CAPTION = '#6E6E6E'
+    COLORS.DARK_RED = '#E04545'
+    COLORS.DARK_GOLD_BRIGHT = '#C4A46C'
+  }
+  refreshElementColors()
 }
 
 // Common opacity token shortcuts (hex suffix for colors without alpha channel)
@@ -82,17 +163,17 @@ export interface InkColors {
 }
 
 export const INK: InkColors = {
-  PRIMARY:   COLORS.INK_BLACK,
+  PRIMARY: COLORS.INK_BLACK,
   SECONDARY: COLORS.INK_BLACK + OP.LOW,
-  BODY:      COLORS.INK_BLACK + '80',
-  CAPTION:   COLORS.INK_BLACK + OP.X_LOW,
-  LABEL:     COLORS.INK_BLACK + OP.MEDIUM,
-  BORDER:    COLORS.INK_BLACK + OP.FAINT,
-  HAIRLINE:  COLORS.INK_BLACK + OP.X_FAINT,
-  FAINT:     COLORS.INK_BLACK + OP.FAINT,
-  BG_LIGHT:  COLORS.INK_BLACK + OP.TINY,
+  BODY: COLORS.INK_BLACK + '80',
+  CAPTION: COLORS.INK_BLACK + OP.X_LOW,
+  LABEL: COLORS.INK_BLACK + OP.MEDIUM,
+  BORDER: COLORS.INK_BLACK + OP.FAINT,
+  HAIRLINE: COLORS.INK_BLACK + OP.X_FAINT,
+  FAINT: COLORS.INK_BLACK + OP.FAINT,
+  BG_LIGHT: COLORS.INK_BLACK + OP.TINY,
   BG_MEDIUM: COLORS.INK_BLACK + OP.TRACE,
-  BG_FAINT:  COLORS.INK_BLACK + OP.GHOST,
+  BG_FAINT: COLORS.INK_BLACK + OP.GHOST,
   PLACEHOLDER: COLORS.INK_BLACK + OP.LIGHT,
 }
 
@@ -107,12 +188,37 @@ export interface RedColors {
 }
 
 export const RED: RedColors = {
-  PRIMARY:   COLORS.IMPERIAL_RED,
-  BORDER:    COLORS.IMPERIAL_RED + OP.LIGHT,
-  BG_LIGHT:  COLORS.IMPERIAL_RED + '0F',
+  PRIMARY: COLORS.IMPERIAL_RED,
+  BORDER: COLORS.IMPERIAL_RED + OP.LIGHT,
+  BG_LIGHT: COLORS.IMPERIAL_RED + '0F',
   BG_MEDIUM: COLORS.IMPERIAL_RED + OP.TINY,
-  BG_FAINT:  COLORS.IMPERIAL_RED + OP.TRACE,
-  LABEL:     COLORS.IMPERIAL_RED + OP.MEDIUM,
+  BG_FAINT: COLORS.IMPERIAL_RED + OP.TRACE,
+  LABEL: COLORS.IMPERIAL_RED + OP.MEDIUM,
+}
+
+// Refresh derived tokens after theme switch
+function refreshDerivedTokens(): void {
+  INK.PRIMARY = COLORS.INK_BLACK
+  INK.SECONDARY = COLORS.INK_BLACK + OP.LOW
+  INK.BODY = COLORS.INK_BLACK + '80'
+  INK.CAPTION = COLORS.INK_BLACK + OP.X_LOW
+  INK.LABEL = COLORS.INK_BLACK + OP.MEDIUM
+  INK.BORDER = COLORS.INK_BLACK + OP.FAINT
+  INK.HAIRLINE = COLORS.INK_BLACK + OP.X_FAINT
+  INK.FAINT = COLORS.INK_BLACK + OP.FAINT
+  INK.BG_LIGHT = COLORS.INK_BLACK + OP.TINY
+  INK.BG_MEDIUM = COLORS.INK_BLACK + OP.TRACE
+  INK.BG_FAINT = COLORS.INK_BLACK + OP.GHOST
+  INK.PLACEHOLDER = COLORS.INK_BLACK + OP.LIGHT
+
+  RED.PRIMARY = COLORS.IMPERIAL_RED
+  RED.BORDER = COLORS.IMPERIAL_RED + OP.LIGHT
+  RED.BG_LIGHT = COLORS.IMPERIAL_RED + '0F'
+  RED.BG_MEDIUM = COLORS.IMPERIAL_RED + OP.TINY
+  RED.BG_FAINT = COLORS.IMPERIAL_RED + OP.TRACE
+  RED.LABEL = COLORS.IMPERIAL_RED + OP.MEDIUM
+
+  refreshElementColors()
 }
 
 // ============================================================
@@ -137,13 +243,32 @@ export const BRANCH_ELEMENT: Map<string, string> = new Map([
   ['亥', '水'], ['子', '水'],
 ])
 
-export const ELEMENT_COLORS: Map<string, string> = new Map([
-  ['木', COLORS.WOOD],
-  ['火', COLORS.FIRE],
-  ['土', COLORS.EARTH],
-  ['金', COLORS.METAL],
-  ['水', COLORS.WATER],
+// 地支藏干 (hidden stems inside each earthly branch)
+export const BRANCH_HIDDEN_STEMS: Map<string, string[]> = new Map([
+  ['子', ['癸']],
+  ['丑', ['己', '癸', '辛']],
+  ['寅', ['甲', '丙', '戊']],
+  ['卯', ['乙']],
+  ['辰', ['戊', '乙', '癸']],
+  ['巳', ['丙', '庚', '戊']],
+  ['午', ['丁', '己']],
+  ['未', ['己', '丁', '乙']],
+  ['申', ['庚', '壬', '戊']],
+  ['酉', ['辛']],
+  ['戌', ['戊', '辛', '丁']],
+  ['亥', ['壬', '甲']],
 ])
+
+export const ELEMENT_COLORS: Map<string, string> = new Map()
+
+function refreshElementColors(): void {
+  ELEMENT_COLORS.clear()
+  ELEMENT_COLORS.set('木', COLORS.WOOD)
+  ELEMENT_COLORS.set('火', COLORS.FIRE)
+  ELEMENT_COLORS.set('土', COLORS.EARTH)
+  ELEMENT_COLORS.set('金', COLORS.METAL)
+  ELEMENT_COLORS.set('水', COLORS.WATER)
+}
 
 export const ELEMENT_ORDER: string[] = ['木', '火', '土', '金', '水']
 
@@ -264,15 +389,15 @@ export interface ThemeColors {
 
 export function themeColors(mode: ThemeMode): ThemeColors {
   if (mode === ThemeMode.DARK) {
-    return {
-      bg: COLORS.DARK_BG, surface: COLORS.DARK_SURFACE, card: COLORS.DARK_CARD, border: COLORS.DARK_BORDER,
-      textPrimary: COLORS.DARK_TEXT_PRIMARY, textSecondary: COLORS.DARK_TEXT_SECONDARY, textCaption: COLORS.DARK_TEXT_CAPTION,
-      red: COLORS.DARK_RED, gold: COLORS.DARK_GOLD_BRIGHT, cardActive: COLORS.DARK_CARD, paper: COLORS.DARK_BG
-    }
+    applyTheme(true)
+  } else {
+    applyTheme(false)
   }
   return {
-    bg: COLORS.WHITE, surface: COLORS.WHITE + '80', card: COLORS.WHITE + '80', border: COLORS.INK_BLACK + OP.FAINT,
+    bg: COLORS.PAPER, surface: COLORS.WHITE + '80', card: COLORS.WHITE + '80', border: COLORS.INK_BLACK + OP.FAINT,
     textPrimary: COLORS.INK_BLACK, textSecondary: INK.BODY, textCaption: INK.CAPTION,
     red: COLORS.IMPERIAL_RED, gold: COLORS.AMBER_GOLD, cardActive: COLORS.ACTIVE_CARD_BG, paper: COLORS.PAPER
   }
 }
+
+refreshDerivedTokens()

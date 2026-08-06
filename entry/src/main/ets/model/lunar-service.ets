@@ -1,9 +1,13 @@
-import { HEAVENLY_STEMS, EARTHLY_BRANCHES, STEM_ELEMENT, BRANCH_ELEMENT, SEASONAL_STRENGTH, getElementRelation } from '../common/constants'
+import {
+  HEAVENLY_STEMS, EARTHLY_BRANCHES, STEM_ELEMENT, BRANCH_ELEMENT, BRANCH_HIDDEN_STEMS,
+  SEASONAL_STRENGTH, getElementRelation
+} from '../common/constants'
 import {
   BaziData, PillarData, TEN_STEMS_ANALYSIS, MonthCommand, StructureInfo,
   NayinData, ShenshaEntry, ShenshaResult, DayunData, DayunCycle,
-  LiunianResult, MonthlyFate, getNayin
+  LiunianResult, MonthlyFate, PalaceInfo, getNayin
 } from './bazi-data'
+import { GET_HEX_BY_BINARY } from './iching-data'
 
 // ============================================================
 // Lunar calendar data: encoded integers per year (1900-2100)
@@ -44,6 +48,11 @@ function daysBetween(d1: Date, d2: Date): number {
 
 function getYearStemBranchIndex(year: number): number {
   return ((year - 4) % 60 + 60) % 60
+}
+
+export function getYearStemBranch(year: number): string {
+  const idx = getYearStemBranchIndex(year)
+  return HEAVENLY_STEMS[idx % 10] + EARTHLY_BRANCHES[idx % 12]
 }
 
 function getMonthStemBranchIndex(yearStemIndex: number, monthNum: number): number {
@@ -310,6 +319,7 @@ interface SolarTerm {
 }
 
 const SOLAR_TERMS: SolarTerm[] = [
+  { name: '小寒', month: 1, day: 6 },
   { name: '立春', month: 2, day: 4 },
   { name: '惊蛰', month: 3, day: 6 },
   { name: '清明', month: 4, day: 5 },
@@ -321,52 +331,149 @@ const SOLAR_TERMS: SolarTerm[] = [
   { name: '寒露', month: 10, day: 8 },
   { name: '立冬', month: 11, day: 7 },
   { name: '大雪', month: 12, day: 7 },
-  { name: '小寒', month: 1, day: 6 }, // January of NEXT year
 ]
 
-function getSolarTermBeforeBirth(year: number, birthMonth: number, birthDay: number): SolarTerm | null {
-  // Find the solar term that falls in the same month or before birth
-  let best: SolarTerm | null = null
+// Return the nearest solar term (approximate date) on or before the birth moment
+function getSolarTermBeforeBirthDate(year: number, birthMonth: number, birthDay: number): Date {
+  const birthDate = new Date(year, birthMonth - 1, birthDay)
+  let best: Date | null = null
+  let bestTime: number = -Infinity
   for (const term of SOLAR_TERMS) {
-    // We need the term that's in the same month AND before birth day,
-    // or the term in the previous month that's closest
     const termDate = new Date(year, term.month - 1, term.day)
-    const birthDate = new Date(year, birthMonth - 1, birthDay)
-    if (termDate < birthDate) {
-      if (!best || termDate.getTime() > new Date(year, best.month - 1, best.day).getTime()) {
-        best = term
-      }
+    if (termDate.getTime() <= birthDate.getTime() && termDate.getTime() > bestTime) {
+      best = termDate
+      bestTime = termDate.getTime()
     }
   }
-  // If no term found before birth this year, check previous year's terms
-  if (!best) {
-    const prevYearTerms = SOLAR_TERMS.filter(t => t.month === 12 || t.month === 11 || t.month === 10)
-    // Just take the last term of previous year
-    best = SOLAR_TERMS[SOLAR_TERMS.length - 1] // 小寒 Jan 6
-  }
-  return best
+  if (best) { return best }
+  // Early January: the previous term belongs to last year (大雪, Dec 7)
+  return new Date(year - 1, 11, 7)
 }
 
-function getSolarTermAfterBirth(year: number, birthMonth: number, birthDay: number): SolarTerm | null {
+// Return the nearest solar term (approximate date) on or after the birth moment
+function getSolarTermAfterBirthDate(year: number, birthMonth: number, birthDay: number): Date {
   const birthDate = new Date(year, birthMonth - 1, birthDay)
-  // Find the closest term after birth
-  let best: SolarTerm | null = null
+  let best: Date | null = null
+  let bestTime: number = Infinity
   for (const term of SOLAR_TERMS) {
     const termDate = new Date(year, term.month - 1, term.day)
-    if (termDate > birthDate) {
-      if (!best || termDate.getTime() < new Date(year, best.month - 1, best.day).getTime()) {
-        best = term
-      }
+    if (termDate.getTime() >= birthDate.getTime() && termDate.getTime() < bestTime) {
+      best = termDate
+      bestTime = termDate.getTime()
     }
   }
-  // If none found this year, check next year
-  if (!best) {
-    best = SOLAR_TERMS[0] // 立春 of next year? No, that's Feb. We should use 小寒 of next year? No.
-    // Actually for births in Dec, the next term would be 小寒 next Jan or 立春 next Feb
-    // Let me just handle this more carefully
-    best = SOLAR_TERMS.find(t => t.month >= 1) || SOLAR_TERMS[0]
+  if (best) { return best }
+  // Late December: the next term is 小寒 of next year
+  return new Date(year + 1, 0, 6)
+}
+
+// ============================================================
+// 真太阳时 (True Solar Time) correction
+// ============================================================
+function dayOfYear(date: Date): number {
+  const start = new Date(date.getFullYear(), 0, 1)
+  return Math.floor((date.getTime() - start.getTime()) / 86400000) + 1
+}
+
+/**
+ * Convert Beijing local time to true solar time at a given longitude.
+ * longitude: 东经度数 (e.g. 北京 116.4, 上海 121.5); default standard meridian is 120°E.
+ * Returns a new Date; may shift the calendar day when crossing midnight.
+ */
+export function applyTrueSolarTime(date: Date, longitude: number): Date {
+  const n = dayOfYear(date)
+  const b = 2 * Math.PI * (n - 81) / 364
+  const eotMinutes = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b)
+  const deltaMinutes = (120 - longitude) * 4 + eotMinutes
+  return new Date(date.getTime() + deltaMinutes * 60000)
+}
+
+// ============================================================
+// 命宫 / 胎元
+// ============================================================
+function computeMingGong(yearStemIdx: number, lunarMonth: number, hourBranchIdx: number): PalaceInfo {
+  // 命宫推法: 正月起子逆数至生月，落宫起子时顺数至生时，卯位即命宫（简化为落宫+时支）
+  const startPos = (13 - lunarMonth) % 12
+  const branchIdx = (startPos + hourBranchIdx) % 12
+  const monthNum = ((branchIdx - 2) % 12 + 12) % 12 + 1
+  const monthSBIndex = getMonthStemBranchIndex(yearStemIdx % 10, monthNum)
+  return { stem: HEAVENLY_STEMS[monthSBIndex % 10], branch: EARTHLY_BRANCHES[branchIdx] }
+}
+
+function computeTaiYuan(monthStemIdx: number, monthBranchIdx: number): PalaceInfo {
+  // 胎元: 月干进一位，月支进三位
+  return {
+    stem: HEAVENLY_STEMS[(monthStemIdx + 1) % 10],
+    branch: EARTHLY_BRANCHES[(monthBranchIdx + 3) % 12]
   }
-  return best
+}
+
+// ============================================================
+// 今日信息 (Today card)
+// ============================================================
+const LUNAR_MONTH_NAMES: string[] = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊']
+const LUNAR_DAY_NAMES: string[] = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
+
+function lunarDayText(day: number): string {
+  if (day <= 0) return ''
+  if (day <= 10) return '初' + LUNAR_DAY_NAMES[day - 1]
+  if (day < 20) return '十' + LUNAR_DAY_NAMES[day - 11]
+  if (day === 20) return '二十'
+  if (day < 30) return '廿' + LUNAR_DAY_NAMES[day - 21]
+  return '三十'
+}
+
+export interface TodayInfo {
+  dateText: string
+  lunarText: string
+  yearStemBranch: string
+  zodiac: string
+  dayStemBranch: string
+  solarTerm: string
+  hexName: string
+  hexSymbol: string
+  hexNumber: number
+}
+
+export function getTodayInfo(): TodayInfo {
+  const now = new Date()
+  const lunar = solarToLunar(now)
+  const yearSBIdx = getYearStemBranchIndex(now.getFullYear())
+  const daySBIdx = getDayStemBranchIndex(now)
+  const yearStemBranch = HEAVENLY_STEMS[yearSBIdx % 10] + EARTHLY_BRANCHES[yearSBIdx % 12]
+  const dayStemBranch = HEAVENLY_STEMS[daySBIdx % 10] + EARTHLY_BRANCHES[daySBIdx % 12]
+  const lunarText = (lunar.isLeapMonth ? '闰' : '') + LUNAR_MONTH_NAMES[lunar.month - 1] + '月' + lunarDayText(lunar.day)
+
+  // 今日卦象: 以日干支序数取卦
+  const hexIdx = daySBIdx % 64
+  const binary = hexIdx.toString(2).padStart(6, '0')
+  const hex = GET_HEX_BY_BINARY(binary)
+
+  // 当前节气（近似）
+  let termName = ''
+  let bestTime: number = -Infinity
+  for (const t of SOLAR_TERMS) {
+    const cand = new Date(now.getFullYear(), t.month - 1, t.day)
+    if (cand.getTime() <= now.getTime() && cand.getTime() > bestTime) {
+      bestTime = cand.getTime()
+      termName = t.name
+    }
+  }
+  if (termName.length === 0) {
+    termName = '大雪'
+  }
+
+  return {
+    dateText: now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日',
+    lunarText: lunarText,
+    yearStemBranch: yearStemBranch,
+    zodiac: ZODIAC_NAMES[yearSBIdx % 12],
+    dayStemBranch: dayStemBranch,
+    solarTerm: termName,
+    hexName: hex.name,
+    hexSymbol: hex.symbol,
+    hexNumber: hex.number
+  }
 }
 
 // ============================================================
@@ -382,25 +489,17 @@ function computeDayun(yearStem: string, monthStemIdx: number, monthBranchIdx: nu
   const direction = forward ? 'forward' : 'backward'
 
   // Calculate starting age
-  let startTerm: SolarTerm | null = null
-  if (forward) {
-    startTerm = getSolarTermAfterBirth(birthYear, birthMonth, birthDay)
-  } else {
-    startTerm = getSolarTermBeforeBirth(birthYear, birthMonth, birthDay)
-  }
-
-  // Calculate days to nearest term
-  const birthDate = new Date(birthYear, birthMonth - 1, birthDay)
   let termDate: Date
-  if (startTerm) {
-    termDate = new Date(birthYear, startTerm.month - 1, startTerm.day)
+  if (forward) {
+    termDate = getSolarTermAfterBirthDate(birthYear, birthMonth, birthDay)
   } else {
-    // Fallback
-    termDate = new Date(birthYear, birthMonth - 1, 15)
+    termDate = getSolarTermBeforeBirthDate(birthYear, birthMonth, birthDay)
   }
 
-  const dayDiff = Math.abs(Math.floor((termDate.getTime() - birthDate.getTime()) / 86400000))
-  const startAge = Math.max(1, Math.round(dayDiff / 3)) // 3 days = 1 year
+  // Calculate hours to nearest term: 3 days = 1 year (72 hours = 12 months)
+  const birthDate = new Date(birthYear, birthMonth - 1, birthDay)
+  const diffHours = Math.abs((termDate.getTime() - birthDate.getTime()) / 3600000)
+  const startAge = Math.max(1, Math.round(diffHours / 72)) // 3天=1年，精确到小时
 
   // Generate 10 大运 cycles
   const cycles: DayunCycle[] = []
@@ -434,9 +533,9 @@ function computeDayun(yearStem: string, monthStemIdx: number, monthBranchIdx: nu
     })
   }
 
-  let descText = forward
-    ? '阳年' + (gender === 'male' ? '男' : '女') + '，大运顺行。约' + startAge + '岁起运。'
-    : '阴年' + (gender === 'male' ? '男' : '女') + '，大运逆行。约' + startAge + '岁起运。'
+  const yearType = yang ? '阳年' : '阴年'
+  const descText = yearType + (gender === 'male' ? '男命' : '女命') +
+    '，大运' + (forward ? '顺行' : '逆行') + '。约' + startAge + '岁起运。'
 
   return { direction, startAge: startAge, description: descText, cycles }
 }
@@ -510,10 +609,26 @@ export function calculateBazi(date: Date, gender: string): BaziData {
   const dayNayin = getNayin(lunar.dayStemIdx, lunar.dayBranchIdx)
   const hourNayin = getNayin(hourStemIdx, hourBranchIdx)
 
-  const yearPillar: PillarData = { stem: lunar.yearStem, branch: lunar.yearBranch, element: yearElem, nayin: yearNayin.name, nayinElement: yearNayin.element }
-  const monthPillar: PillarData = { stem: lunar.monthStem, branch: lunar.monthBranch, element: monthElem, nayin: monthNayin.name, nayinElement: monthNayin.element }
-  const dayPillar: PillarData = { stem: lunar.dayStem, branch: lunar.dayBranch, element: dayElem, nayin: dayNayin.name, nayinElement: dayNayin.element }
-  const hourPillar: PillarData = { stem: hourSB.stem, branch: hourSB.branch, element: hourElem, nayin: hourNayin.name, nayinElement: hourNayin.element }
+  const yearPillar: PillarData = {
+    stem: lunar.yearStem, branch: lunar.yearBranch, element: yearElem,
+    nayin: yearNayin.name, nayinElement: yearNayin.element,
+    hiddenStems: BRANCH_HIDDEN_STEMS.get(lunar.yearBranch) || []
+  }
+  const monthPillar: PillarData = {
+    stem: lunar.monthStem, branch: lunar.monthBranch, element: monthElem,
+    nayin: monthNayin.name, nayinElement: monthNayin.element,
+    hiddenStems: BRANCH_HIDDEN_STEMS.get(lunar.monthBranch) || []
+  }
+  const dayPillar: PillarData = {
+    stem: lunar.dayStem, branch: lunar.dayBranch, element: dayElem,
+    nayin: dayNayin.name, nayinElement: dayNayin.element,
+    hiddenStems: BRANCH_HIDDEN_STEMS.get(lunar.dayBranch) || []
+  }
+  const hourPillar: PillarData = {
+    stem: hourSB.stem, branch: hourSB.branch, element: hourElem,
+    nayin: hourNayin.name, nayinElement: hourNayin.element,
+    hiddenStems: BRANCH_HIDDEN_STEMS.get(hourSB.branch) || []
+  }
 
   // Five elements count
   const fiveElementsCount = new Map<string, number>([['金',0],['木',0],['水',0],['火',0],['土',0]])
@@ -570,13 +685,17 @@ export function calculateBazi(date: Date, gender: string): BaziData {
   // Liunian
   const liunian = computeLiunian(lunar.dayStemIdx, lunar.dayBranchIdx, dmElement)
 
+  // 命宫 / 胎元
+  const mingGong = computeMingGong(lunar.yearStemIdx, lunar.month, hourBranchIdx)
+  const taiYuan = computeTaiYuan(lunar.monthStemIdx, lunar.monthBranchIdx)
+
   return {
     year: yearPillar, month: monthPillar, day: dayPillar, hour: hourPillar,
     fiveElements: fiveElementsCount, dayMaster: lunar.dayStem,
     dayMasterAnalysis: '日主' + lunar.dayStem + '，五行属' + dmElement + '。' + analysisText,
     monthCommand: { branch: monthPillar.branch, element: monthElementVal, strength: freshStrength, impact },
     structure: { name: structName, description: structDesc },
-    nayin, shensha, dayun, liunian
+    nayin, shensha, dayun, liunian, mingGong, taiYuan
   }
 }
 
