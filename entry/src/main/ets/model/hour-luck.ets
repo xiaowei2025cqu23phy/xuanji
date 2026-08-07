@@ -1,11 +1,9 @@
 import { HEAVENLY_STEMS, EARTHLY_BRANCHES } from '../common/constants'
+import { JIAN_CHU_NAMES, getJianChuIndex } from './almanac'
 
 // ============================================================
 // 每日吉时查询（十二建星 + 黄黑道）
 // ============================================================
-
-// 十二建星（建除满平定执破危成收开闭）
-const JIANXING_NAMES: string[] = ['建', '除', '满', '平', '定', '执', '破', '危', '成', '收', '开', '闭']
 
 // 黄黑道十二神（青龙明堂天刑朱雀金匮天德白虎玉堂天牢玄武司命勾陈）
 const HUANGHEI_NAMES: string[] = ['青龙', '明堂', '天刑', '朱雀', '金匮', '天德', '白虎', '玉堂', '天牢', '玄武', '司命', '勾陈']
@@ -56,8 +54,7 @@ export function getDailyHourLuck(dayBranch: string, dayBranchIdx: number, monthB
     const isAuspicious = huangheiIdx === 0 || huangheiIdx === 1 || huangheiIdx === 4 ||
       huangheiIdx === 5 || huangheiIdx === 7 || huangheiIdx === 10
 
-    const jianchuIdx = ((dayBranchIdx - monthBranchIdx) % 12 + 12) % 12
-    const jianxing = JIANXING_NAMES[jianchuIdx]
+    const jianxing = JIAN_CHU_NAMES[getJianChuIndex(dayBranchIdx, monthBranchIdx)]
 
     let advice: string
     if (isAuspicious) {

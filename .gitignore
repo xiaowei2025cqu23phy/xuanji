@@ -10,6 +10,7 @@
 /.clang-tidy
 **/.test
 /.appanalyzer
+/.claude/
 
 # 旧 IDE 工程残留（嵌套目录）
 /tian-dao-xuan-ji-harmony/

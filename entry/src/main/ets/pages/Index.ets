@@ -7,6 +7,9 @@ import { SolarTermSection } from '../components/SolarTermSection'
 import { ZodiacSection } from '../components/ZodiacSection'
 import { ZodiacCompatSection } from '../components/ZodiacCompatSection'
 import { HourLuckSection } from '../components/HourLuckSection'
+import { HehunSection } from '../components/HehunSection'
+import { MoreSection } from '../components/MoreSection'
+import { PrivacySection } from '../components/PrivacySection'
 import { AISettingsModal } from '../components/AISettingsModal'
 import {
   AIConfig, DEFAULT_AI_CONFIG, loadAIConfig, saveAIConfig, loadDarkMode, saveDarkMode
@@ -33,7 +36,9 @@ struct Index {
         controller: this.settingsDialogController!,
         onSave: (config: AIConfig) => {
           this.aiConfig = config
-          saveAIConfig(config)
+          saveAIConfig(config).catch(() => {
+            this.getUIContext().getPromptAction().showToast({ message: '配置保存失败' })
+          })
         }
       }),
       autoCancel: true,
@@ -62,14 +67,20 @@ struct Index {
             IChingSection({ aiConfig: this.aiConfig }).padding({ left: 24, right: 24, bottom: 24 })
           } else if (this.activeTab === 'almanac') {
             AlmanacSection().padding({ left: 24, right: 24, bottom: 24 })
+          } else if (this.activeTab === 'hourluck') {
+            HourLuckSection().padding({ left: 24, right: 24, bottom: 24 })
+          } else if (this.activeTab === 'hehun') {
+            HehunSection().padding({ left: 24, right: 24, bottom: 24 })
+          } else if (this.activeTab === 'privacy') {
+            PrivacySection().padding({ left: 24, right: 24, bottom: 24 })
+          } else if (this.activeTab === 'more') {
+            MoreSection({ onSelect: (id: string) => { this.activeTab = id } }).padding({ left: 24, right: 24, bottom: 24 })
           } else if (this.activeTab === 'solar') {
             SolarTermSection().padding({ left: 24, right: 24, bottom: 24 })
           } else if (this.activeTab === 'zodiac') {
             ZodiacSection().padding({ left: 24, right: 24, bottom: 24 })
           } else if (this.activeTab === 'compat') {
             ZodiacCompatSection().padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'hourluck') {
-            HourLuckSection().padding({ left: 24, right: 24, bottom: 24 })
           } else {
             CosmologySection().padding({ left: 24, right: 24, bottom: 24 })
           }
@@ -210,11 +221,8 @@ struct Index {
         this.TabButton('bazi', '生辰八字')
         this.TabButton('iching', '周易起卦')
         this.TabButton('almanac', '黄历')
-        this.TabButton('solar', '节气')
         this.TabButton('hourluck', '吉时')
-        this.TabButton('zodiac', '生肖')
-        this.TabButton('compat', '配对')
-        this.TabButton('cosmos', '易理图鉴')
+        this.TabButton('more', '更多')
       }
     }
     .scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off).edgeEffect(EdgeEffect.Spring)
@@ -223,12 +231,24 @@ struct Index {
 
   @Builder TabButton(tab: string, label: string) {
     Button(label).fontSize(13).fontWeight(FontWeight.Bold)
-      .fontColor(this.activeTab === tab ? COLORS.WHITE : INK.SECONDARY)
-      .backgroundColor(this.activeTab === tab ? COLORS.INK_BLACK : COLORS.WHITE + '80')
+      .fontColor(this.isTabActive(tab) ? COLORS.WHITE : INK.SECONDARY)
+      .backgroundColor(this.isTabActive(tab) ? COLORS.INK_BLACK : COLORS.WHITE + '80')
       .padding({ left: 16, right: 16, top: 11, bottom: 11 })
       .borderRadius(14)
       .animation({ duration: 200, curve: Curve.EaseOut })
       .onClick(() => { this.activeTab = tab })
+  }
+
+  isTabActive(tab: string): boolean {
+    if (tab === 'more') {
+      return this.isHiddenTab(this.activeTab)
+    }
+    return this.activeTab === tab
+  }
+
+  isHiddenTab(tab: string): boolean {
+    return tab === 'solar' || tab === 'zodiac' || tab === 'compat' ||
+      tab === 'cosmos' || tab === 'hehun' || tab === 'privacy' || tab === 'more'
   }
 
   @Builder FooterSection() {

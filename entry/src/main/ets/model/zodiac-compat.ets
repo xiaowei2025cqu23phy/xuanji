@@ -1,4 +1,5 @@
 import { HEAVENLY_STEMS, EARTHLY_BRANCHES, STEM_ELEMENT, getElementRelation, ElementRelation } from '../common/constants'
+import { BaziData } from './bazi-data'
 
 // ============================================================
 // 生肖配对 / 合婚引擎
@@ -195,6 +196,102 @@ export function calculateHehun(
     stemRelation: stemRel,
     branchRelation: branchRel,
     summary
+  }
+}
+
+// ============================================================
+// 完整八字合婚（双方四柱）：日干 + 日支 + 生肖 + 纳音 + 五行互补
+// ============================================================
+export interface HehunFullResult {
+  overallScore: number
+  level: string
+  stemRelation: ElementRelation
+  branchRelation: ZodiacRelation
+  zodiacRelation: ZodiacRelation
+  nayinText: string
+  complementText: string
+  summary: string
+}
+
+function relationScore(rel: ZodiacRelation): number {
+  return rel.score
+}
+
+function elementScore(label: string): number {
+  if (label === '比和') return 75
+  if (label === '生我' || label === '我生') return 70
+  if (label === '我克' || label === '克我') return 45
+  return 60
+}
+
+export function calculateHehunFull(male: BaziData, female: BaziData): HehunFullResult {
+  const maleElem = STEM_ELEMENT.get(male.dayMaster) || ''
+  const femaleElem = STEM_ELEMENT.get(female.dayMaster) || ''
+  const stemRel = getElementRelation(maleElem, femaleElem)
+  const branchRel = getZodiacRelation(male.day.branch, female.day.branch)
+  const zodiacRel = getZodiacRelation(male.year.branch, female.year.branch)
+
+  // 纳音：日柱纳音五行是否相生/相同
+  const maleNayin = male.day.nayinElement || ''
+  const femaleNayin = female.day.nayinElement || ''
+  let nayinScore = 60
+  let nayinText = ''
+  if (maleNayin.length > 0 && femaleNayin.length > 0) {
+    const rel = getElementRelation(maleNayin, femaleNayin)
+    nayinScore = rel.label === '比和' ? 80 : (rel.label === '生我' || rel.label === '我生') ? 75 : 50
+    nayinText = male.day.nayin + '（' + maleNayin + '） vs ' + female.day.nayin + '（' + femaleNayin + '）· ' + rel.label
+  } else {
+    nayinText = '日柱纳音暂无'
+  }
+
+  // 五行互补：统计双方日主所在五行，缺项互补提示
+  const maleCounts: string[] = []
+  const femaleCounts: string[] = []
+  for (let i = 0; i < 5; i++) {
+    const e = ['木', '火', '土', '金', '水'][i]
+    maleCounts.push(e + (male.fiveElements.get(e) || 0))
+    femaleCounts.push(e + (female.fiveElements.get(e) || 0))
+  }
+  let complementText = '男命：' + maleCounts.join(' ') + '；女命：' + femaleCounts.join(' ')
+  const maleMissing = ['木', '火', '土', '金', '水'].filter(e => (male.fiveElements.get(e) || 0) === 0)
+  const femaleMissing = ['木', '火', '土', '金', '水'].filter(e => (female.fiveElements.get(e) || 0) === 0)
+  const mutual = maleMissing.filter(e => femaleMissing.indexOf(e) < 0)
+  if (mutual.length > 0) {
+    complementText += '；男命所缺' + maleMissing.join('、') + '，女命可补' + mutual.join('、')
+  }
+
+  const overallScore = Math.round(
+    elementScore(stemRel.label) * 0.3 +
+    relationScore(branchRel) * 0.4 +
+    relationScore(zodiacRel) * 0.2 +
+    nayinScore * 0.1
+  )
+
+  let level = '吉'
+  if (overallScore >= 85) level = '上吉'
+  else if (overallScore >= 70) level = '吉'
+  else if (overallScore >= 55) level = '中吉'
+  else if (overallScore >= 40) level = '平'
+  else level = '慎'
+
+  let summary = '日干' + male.dayMaster + '(' + maleElem + ')与' + female.dayMaster + '(' + femaleElem + ')' +
+    stemRel.label + '；日支' + branchRel.label + '；生肖' + zodiacRel.label + '。'
+  summary += '综合评分 ' + overallScore + ' 分，属"' + level + '"。'
+  if (overallScore >= 85) summary += '天作之合，五行相济，宜珍惜。'
+  else if (overallScore >= 70) summary += '整体和睦，小处磨合即可长久。'
+  else if (overallScore >= 55) summary += '缘分尚可，需双方用心经营。'
+  else if (overallScore >= 40) summary += '冲克并存，宜以包容与理解为先。'
+  else summary += '矛盾较多，建议谨慎相处、以德化之。'
+
+  return {
+    overallScore: overallScore,
+    level: level,
+    stemRelation: stemRel,
+    branchRelation: branchRel,
+    zodiacRelation: zodiacRel,
+    nayinText: nayinText,
+    complementText: complementText,
+    summary: summary
   }
 }
 

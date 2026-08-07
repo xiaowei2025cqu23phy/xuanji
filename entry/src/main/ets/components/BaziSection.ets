@@ -1,15 +1,15 @@
-import { COLORS, ELEMENT_COLORS, ELEMENT_ORDER, INK, RED, OP } from '../common/constants'
-import { calculateBazi, getTrueSolarTime, TrueSolarInfo } from '../model/lunar-service'
-import { BaziData, PillarData, ShenshaEntry, DayunCycle, MonthlyFate } from '../model/bazi-data'
+import { COLORS, ELEMENT_COLORS, ELEMENT_ORDER, INK, RED, OP, HEAVENLY_STEMS, EARTHLY_BRANCHES, STEM_ELEMENT } from '../common/constants'
+import { calculateBazi, getTrueSolarTime, TrueSolarInfo, getLiunianForYear } from '../model/lunar-service'
+import { BaziData, PillarData, ShenshaEntry, DayunCycle, MonthlyFate, LiunianResult } from '../model/bazi-data'
 import { buildOfflineBaziReport } from '../services/offlineInterpreter'
 import {
   interpretMetaphysics, getOfflineBaziAnalysis, AIConfig, ChatMessage,
-  QUESTION_CATEGORIES
+  QUESTION_CATEGORIES, loadLateZiHuanRi
 } from '../services/aiService'
 import {
   SavedBaziReading, saveBaziReading, loadBaziReadings, deleteBaziReading
 } from '../services/readingStore'
-import { formatBaziShareText } from '../services/exportService'
+import { formatBaziShareText, shareText } from '../services/exportService'
 import pasteboard from '@ohos.pasteboard'
 import { WuXingCycle } from './WuXingCycle'
 import { AIChatPanel } from './shared/AIChatPanel'
@@ -23,6 +23,7 @@ export struct BaziSection {
   @State gender: string = 'male'
   @State useTrueSolar: boolean = false
   @State longitude: string = '120'
+  @State lateZiHuanRi: boolean = false
   @State trueSolar: TrueSolarInfo | null = null
   @State result: BaziData | null = null
   @State offlineReport: string = ''
@@ -36,9 +37,15 @@ export struct BaziSection {
   @State activeSubTab: string = 'pillars' // pillars | nayin | shensha | dayun | liunian
   @State records: SavedBaziReading[] = []
   @State showRecords: boolean = false
+  @State liunian: LiunianResult | null = null
+  @State liunianYear: number = new Date().getFullYear()
+  private liunianDayStemIdx: number = 0
+  private liunianDayBranchIdx: number = 0
+  private liunianDmElement: string = ''
 
   async aboutToAppear() {
     this.records = await loadBaziReadings()
+    this.lateZiHuanRi = await loadLateZiHuanRi()
   }
 
   build() {
@@ -153,6 +160,10 @@ export struct BaziSection {
           .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK).layoutWeight(1)
           .padding({ top: 10, bottom: 10 })
           .onClick(() => { this.copyResult() })
+        Button('分享').fontSize(11).fontWeight(FontWeight.Bold)
+          .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED).layoutWeight(1)
+          .padding({ top: 10, bottom: 10 })
+          .onClick(() => { this.shareResult() })
         Button('清空对话').fontSize(11).fontWeight(FontWeight.Bold)
           .fontColor(INK.LABEL).backgroundColor(INK.BG_FAINT).layoutWeight(1)
           .padding({ top: 10, bottom: 10 })
@@ -518,27 +529,36 @@ export struct BaziSection {
 
   // --- 流年 Card ---
   @Builder LiunianCard() {
-    if (this.result && this.result.liunian) {
+    if (this.liunian) {
       Column({ space: 12 }) {
-        Text('流年分析').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
+        Row({ space: 8 }) {
+          Text('流年分析').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
+          Blank().layoutWeight(1)
+          Button('‹').fontSize(12).fontColor(COLORS.IMPERIAL_RED).backgroundColor(RED.BG_MEDIUM)
+            .width(28).height(28).borderRadius(14)
+            .onClick(() => { this.changeLiunianYear(-1) })
+          Text(this.liunian!.currentYear + '年').fontSize(11).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+          Button('›').fontSize(12).fontColor(COLORS.IMPERIAL_RED).backgroundColor(RED.BG_MEDIUM)
+            .width(28).height(28).borderRadius(14)
+            .onClick(() => { this.changeLiunianYear(1) })
+        }.width('100%')
         Row({ space: 12 }) {
           Column({ space: 4 }) {
-            Text(this.result!.liunian!.currentYear + '年').fontSize(10).fontColor(INK.PLACEHOLDER)
-            Text(this.result!.liunian!.stem + this.result!.liunian!.branch).fontSize(32).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
-            Text(this.result!.liunian!.zodiac + '年 · ' + (this.result!.liunian!.nayin || '')).fontSize(10).fontColor(INK.PLACEHOLDER)
+            Text(this.liunian!.stem + this.liunian!.branch).fontSize(32).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+            Text(this.liunian!.zodiac + '年 · ' + (this.liunian!.nayin || '')).fontSize(10).fontColor(INK.PLACEHOLDER)
           }
           Column({ space: 4 }) {
             Text('十神').fontSize(9).fontColor(INK.PLACEHOLDER)
-            Text(this.result!.liunian!.tenGod).fontSize(18).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
+            Text(this.liunian!.tenGod).fontSize(18).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
           }
         }.width('100%')
-        Text(this.result!.liunian!.description).fontSize(11).fontColor(INK.SECONDARY).lineHeight(18)
+        Text(this.liunian!.description).fontSize(11).fontColor(INK.SECONDARY).lineHeight(18)
 
         Divider().color(INK.HAIRLINE)
 
         Text('月度运势').fontSize(11).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
         Grid() {
-          ForEach(this.result!.liunian!.monthlyBreakdown, (mf: MonthlyFate) => {
+          ForEach(this.liunian!.monthlyBreakdown, (mf: MonthlyFate) => {
             GridItem() {
               Column({ space: 2 }) {
                 Text(mf.month + '月').fontSize(8).fontColor(INK.PLACEHOLDER)
@@ -580,6 +600,7 @@ export struct BaziSection {
     this.error = ''
     this.activeSubTab = 'pillars'
     try {
+      this.lateZiHuanRi = await loadLateZiHuanRi()
       const tParts = this.time.split(':')
       const hours = isNaN(Number(tParts[0])) ? 12 : Number(tParts[0])
       const minutes = isNaN(Number(tParts[1])) ? 0 : Number(tParts[1])
@@ -602,10 +623,15 @@ export struct BaziSection {
         }
       }
 
-      const data = calculateBazi(calcDate, this.gender as 'male' | 'female')
+      const data = calculateBazi(calcDate, this.gender as 'male' | 'female', this.lateZiHuanRi)
       this.result = data
       this.baseAnalysis = getOfflineBaziAnalysis(data.dayMaster)
       this.offlineReport = buildOfflineBaziReport(data)
+      this.liunian = data.liunian ? data.liunian : null
+      this.liunianYear = data.liunian ? data.liunian.currentYear : new Date().getFullYear()
+      this.liunianDayStemIdx = HEAVENLY_STEMS.indexOf(data.day.stem)
+      this.liunianDayBranchIdx = EARTHLY_BRANCHES.indexOf(data.day.branch)
+      this.liunianDmElement = STEM_ELEMENT.get(data.dayMaster) || ''
       this.chatHistory = []
       await this.saveRecord(data)
     } catch (e) {
@@ -650,8 +676,15 @@ export struct BaziSection {
     this.records = this.records.filter(r => r.id !== rec.id)
   }
 
-  copyResult(): void {
+  changeLiunianYear(delta: number): void {
     if (!this.result) return
+    this.liunianYear += delta
+    this.liunian = getLiunianForYear(
+      this.liunianDayStemIdx, this.liunianDayBranchIdx, this.liunianDmElement, this.liunianYear)
+  }
+
+  buildShareText(): string {
+    if (!this.result) return ''
     const r = this.result
     let text = formatBaziShareText(
       this.date, this.time, this.gender,
@@ -668,12 +701,29 @@ export struct BaziSection {
         '（校正' + this.trueSolar.correctionMinutes + '分钟）\n'
     }
     text += '—— 天道玄机 · 仅供文化娱乐参考'
+    return text
+  }
+
+  copyResult(): void {
+    const text = this.buildShareText()
+    if (text.length === 0) return
     const data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text)
     pasteboard.getSystemPasteboard().setData(data).then(() => {
       this.getUIContext().getPromptAction().showToast({ message: '排盘结果已复制' })
     }).catch(() => {
       this.getUIContext().getPromptAction().showToast({ message: '复制失败' })
     })
+  }
+
+  shareResult(): void {
+    const text = this.buildShareText()
+    if (text.length === 0) return
+    const ctx = this.getUIContext().getHostContext()
+    if (ctx) {
+      shareText(text, ctx).catch(() => {
+        this.getUIContext().getPromptAction().showToast({ message: '分享失败' })
+      })
+    }
   }
 
   async sendFollowUp(text: string) {

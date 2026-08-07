@@ -1,4 +1,6 @@
 import pasteboard from '@ohos.pasteboard'
+import { systemShare } from '@kit.ShareKit'
+import { common } from '@kit.AbilityKit'
 import { exportAllReadings } from './readingStore'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 
@@ -18,6 +20,22 @@ export async function exportReadingsToClipboard(): Promise<string> {
     hilog.error(0x0000, TAG, 'exportReadingsToClipboard failed: %{public}s', (e as Object).toString())
     throw new Error('导出失败')
   }
+}
+
+// ============================================================
+// Share text via system share panel (ShareKit)
+// ============================================================
+export async function shareText(text: string, context: Context): Promise<void> {
+  const record: systemShare.SharedRecord = {
+    utd: 'general.plain-text',
+    title: '天道玄机',
+    content: text
+  }
+  const data = new systemShare.SharedData(record)
+  const controller = new systemShare.ShareController(data)
+  await controller.show(context as common.UIAbilityContext, {
+    previewMode: systemShare.SharePreviewMode.DETAIL
+  })
 }
 
 // ============================================================

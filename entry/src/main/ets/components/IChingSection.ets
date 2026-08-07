@@ -1,4 +1,5 @@
-import { COLORS, INK, RED, OP, HEAVENLY_STEMS, EARTHLY_BRANCHES } from '../common/constants'
+import { COLORS, INK, RED, OP } from '../common/constants'
+import { getDayStemBranch, getMonthStemBranch } from '../model/lunar-service'
 import {
   GET_HEX_BY_BINARY, Hexagram, LineDetail,
   getMutualHexagram, getChangedHexagram, getOppositeHexagram, getInverseHexagram,
@@ -14,18 +15,13 @@ import {
   SavedIChingReading, saveIChingReading, loadIChingReadings, deleteIChingReading
 } from '../services/readingStore'
 import { buildOfflineIChingReport } from '../services/offlineInterpreter'
-import { formatIChingShareText } from '../services/exportService'
+import { formatIChingShareText, shareText } from '../services/exportService'
 import pasteboard from '@ohos.pasteboard'
 
 interface Line {
   value: number
   isMoving: boolean
   type: string
-}
-
-interface StemBranch {
-  stem: string
-  branch: string
 }
 
 interface DivinationResult {
@@ -394,6 +390,10 @@ export struct IChingSection {
           .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK).layoutWeight(1)
           .padding({ top: 10, bottom: 10 })
           .onClick(() => { this.copyResult() })
+        Button('分享').fontSize(11).fontWeight(FontWeight.Bold)
+          .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED).layoutWeight(1)
+          .padding({ top: 10, bottom: 10 })
+          .onClick(() => { this.shareResult() })
         Button('清空对话').fontSize(11).fontWeight(FontWeight.Bold)
           .fontColor(INK.LABEL).backgroundColor(INK.BG_FAINT).layoutWeight(1)
           .padding({ top: 10, bottom: 10 })
@@ -825,9 +825,10 @@ export struct IChingSection {
 
     // Build liuyao pan with current time
     const now = new Date()
-    const daySB = this.computeDayStemBranch(now)
-    const monthSB = this.computeMonthStemBranch(now)
-    this.liuyaoPan = buildLiuYaoPan(res.originalBinary, res.movingIndexes, daySB.stem, daySB.branch, monthSB.stem, monthSB.branch)
+    const daySBText = getDayStemBranch(now)
+    const monthSBText = getMonthStemBranch(now)
+    this.liuyaoPan = buildLiuYaoPan(res.originalBinary, res.movingIndexes,
+      daySBText.charAt(0), daySBText.charAt(1), monthSBText.charAt(0), monthSBText.charAt(1))
 
     if (recordIt) {
       this.saveRecord(res)
@@ -869,22 +870,38 @@ export struct IChingSection {
     this.records = this.records.filter(r => r.id !== rec.id)
   }
 
-  copyResult(): void {
-    if (!this.result) return
+  buildShareText(): string {
+    if (!this.result) return ''
     const r = this.result
-    const text = formatIChingShareText(
+    return formatIChingShareText(
       r.originalHex.symbol, r.originalHex.name, r.originalHex.number,
       r.originalHex.judgement, r.originalHex.meaning,
       r.changedHex ? r.changedHex.symbol : '', r.changedHex ? r.changedHex.name : '',
       r.tiYong.ti, r.tiYong.tiElement, r.tiYong.yong, r.tiYong.yongElement,
       r.tiYong.relation, r.movingIndexes.length
     )
+  }
+
+  copyResult(): void {
+    const text = this.buildShareText()
+    if (text.length === 0) return
     const data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text)
     pasteboard.getSystemPasteboard().setData(data).then(() => {
       this.getUIContext().getPromptAction().showToast({ message: '卦象结果已复制' })
     }).catch(() => {
       this.getUIContext().getPromptAction().showToast({ message: '复制失败' })
     })
+  }
+
+  shareResult(): void {
+    const text = this.buildShareText()
+    if (text.length === 0) return
+    const ctx = this.getUIContext().getHostContext()
+    if (ctx) {
+      shareText(text, ctx).catch(() => {
+        this.getUIContext().getPromptAction().showToast({ message: '分享失败' })
+      })
+    }
   }
 
   calculateNumberDivination(): void {
@@ -983,21 +1000,4 @@ export struct IChingSection {
     return ctx
   }
 
-  // Compute day stem-branch from solar date
-  computeDayStemBranch(date: Date): StemBranch {
-    const refDate = new Date(1900, 0, 1)
-    const diff = Math.floor((date.getTime() - refDate.getTime()) / 86400000)
-    const idx = ((diff % 60) + 60 + 10) % 60
-    return { stem: HEAVENLY_STEMS[idx % 10], branch: EARTHLY_BRANCHES[idx % 12] }
-  }
-
-  // Compute month stem-branch from solar date
-  computeMonthStemBranch(date: Date): StemBranch {
-    const yearSB = ((date.getFullYear() - 4) % 60 + 60) % 60
-    const monthNum = date.getMonth() + 1
-    const bases: number[] = [2, 4, 6, 8, 0]
-    const stemIdx = (bases[yearSB % 5] + monthNum - 1) % 10
-    const branchIdx = (monthNum + 1) % 12
-    return { stem: HEAVENLY_STEMS[stemIdx], branch: EARTHLY_BRANCHES[branchIdx] }
-  }
 }

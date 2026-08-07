@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@ohos/hypium'
 import {
   calculateBazi, applyTrueSolarTime, getTodayInfo, getYearStemBranch, getSolarTermDate,
-  getAlmanac, getTrueSolarTime
+  getAlmanac, getTrueSolarTime, getLiunianForYear, getDayStemBranch, getMonthStemBranch
 } from '../../../../main/ets/model/lunar-service'
 import { getNayin } from '../../../../main/ets/model/bazi-data'
 import {
@@ -201,6 +201,51 @@ export default function LunarServiceTest() {
       expect(report.indexOf('动爻解读')).assertLarger(-1)
       expect(report.indexOf('体用生克')).assertLarger(-1)
       expect(report.indexOf('变卦')).assertLarger(-1)
+    })
+
+    // -- 命宫：按《三命通会》推法，与生时无关（月宫+4） --
+    it('ming_gong_follows_standard_method', () => {
+      // 2026-02-10 属寅月（立春后惊蛰前），午时生
+      const noon = calculateBazi(new Date(2026, 1, 10, 12, 0), 'male')
+      const night = calculateBazi(new Date(2026, 1, 10, 23, 0), 'male')
+      // 寅月 → 月宫 = (13-1)%12 = 0（子）→ 命宫 = (0+4)%12 = 4（辰）
+      expect(noon.mingGong !== undefined).assertTrue()
+      expect(noon.mingGong!.branch).assertEqual('辰')
+      // 命宫与生时无关
+      expect(night.mingGong!.branch).assertEqual('辰')
+      expect(noon.mingGong!.stem).assertEqual(night.mingGong!.stem)
+    })
+
+    // -- 晚子时换日：23:00–24:00 按次日日柱排 --
+    it('late_zi_huan_ri_changes_day_pillar', () => {
+      const birth = new Date(2026, 6, 1, 23, 30)
+      const normal = calculateBazi(birth, 'male', false)
+      const shifted = calculateBazi(birth, 'male', true)
+      const nextNoon = calculateBazi(new Date(2026, 6, 2, 12, 0), 'male')
+      expect(shifted.day.stem + shifted.day.branch).assertEqual(nextNoon.day.stem + nextNoon.day.branch)
+      expect(shifted.day.stem + shifted.day.branch !== normal.day.stem + normal.day.branch).assertTrue()
+    })
+
+    // -- 流年可指定年份 --
+    it('liunian_supports_target_year', () => {
+      const r = calculateBazi(new Date(2026, 5, 1, 12, 0), 'male')
+      const y2025 = getLiunianForYear(0, 0, '木', 2025)
+      const y2026 = getLiunianForYear(0, 0, '木', 2026)
+      expect(y2025.currentYear).assertEqual(2025)
+      expect(y2026.currentYear).assertEqual(2026)
+      expect(y2025.stem !== y2026.stem).assertTrue()
+    })
+
+    // -- 节气月柱（以节为界） --
+    it('month_stem_branch_follows_jieqi', () => {
+      // 2026-03-01 惊蛰前 → 寅月庚寅；2026-03-08 惊蛰后 → 卯月辛卯
+      expect(getMonthStemBranch(new Date(2026, 2, 1))).assertEqual('庚寅')
+      expect(getMonthStemBranch(new Date(2026, 2, 8))).assertEqual('辛卯')
+    })
+
+    // -- 日柱干支 --
+    it('day_stem_branch_returns_two_chars', () => {
+      expect(getDayStemBranch(new Date(2026, 5, 1)).length).assertEqual(2)
     })
   })
 }

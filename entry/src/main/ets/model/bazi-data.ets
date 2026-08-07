@@ -80,6 +80,7 @@ export interface DayunCycle {
 export interface DayunData {
   direction: string     // 'forward' or 'backward'
   startAge: number
+  startAgeText?: string // 起运年龄（精确到月），如 "3岁6个月"
   description: string
   cycles: DayunCycle[]
 }

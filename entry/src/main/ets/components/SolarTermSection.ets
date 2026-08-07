@@ -1,5 +1,6 @@
 import { COLORS, INK, RED } from '../common/constants'
 import { getSolarTermDate, getSolarTermName } from '../model/lunar-service'
+import { TERM_LONGITUDES } from '../model/solar-terms'
 
 interface TermRow {
   idx: number
@@ -9,8 +10,6 @@ interface TermRow {
   desc: string
 }
 
-const TERM_LONGITUDES: number[] = [285, 300, 315, 330, 345, 0, 15, 30, 45, 60, 75, 90,
-  105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270]
 const TERM_DESCS: string[] = [
   '寒潮频繁，进入一年中最冷的时段，宜温补养藏。',
   '一年最后一个节气，寒气至极，大地冰封，宜休养生息。',

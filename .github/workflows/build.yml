@@ -1,0 +1,37 @@
+name: CI Build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # OpenHarmony SDK（API 20）用于编译检查；本工程 target 为 HarmonyOS API 21，
+      # 最终签名安装包仍以 DevEco Studio 本地构建为准。
+      - name: Setup OpenHarmony SDK
+        uses: openharmony-rs/setup-ohos-sdk@v1.0.0
+        with:
+          version: "6.0"
+
+      - name: Install dependencies
+        run: ohpm install --all
+
+      # 仓库内提交的 build-profile.json5 为占位配置；CI 使用无签名专用配置做编译检查，
+      # 避免泄露本地签名密钥。
+      - name: Use CI signing config
+        run: cp build-profile.ci.json5 build-profile.json5
+
+      - name: Build HAP (compile check)
+        run: hvigorw assembleHap --mode module -p product=default --no-daemon

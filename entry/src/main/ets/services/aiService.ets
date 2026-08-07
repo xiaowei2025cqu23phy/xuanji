@@ -1,5 +1,7 @@
 import http from '@ohos.net.http'
 import dataPreferences from '@ohos.data.preferences'
+import { asset } from '@kit.AssetStoreKit'
+import { util } from '@kit.ArkTS'
 import { TEN_STEMS_ANALYSIS } from '../model/bazi-data'
 import { GET_HEX_BY_BINARY } from '../model/iching-data'
 
@@ -74,6 +76,55 @@ const KEY_API_KEY = 'apiKey'
 const KEY_MODEL = 'model'
 const KEY_BASE_URL = 'baseUrl'
 const KEY_DARK_MODE = 'darkMode'
+const KEY_LATE_ZI = 'lateZiHuanRi'
+
+// ----- API Key 安全存储（系统 Asset Store 加密，不落明文） -----
+const ASSET_ALIAS = 'tiandao_api_key'
+
+function strToBytes(s: string): Uint8Array {
+  const enc = new util.TextEncoder()
+  return enc.encodeInto(s)
+}
+
+function bytesToStr(b: Uint8Array): string {
+  const dec = util.TextDecoder.create('utf-8')
+  return dec.decodeToString(b)
+}
+
+function apiKeyAliasMap(): asset.AssetMap {
+  const m: asset.AssetMap = new Map<asset.Tag, asset.Value>()
+  m.set(asset.Tag.ALIAS, strToBytes(ASSET_ALIAS))
+  return m
+}
+
+async function loadApiKeyAsset(): Promise<string> {
+  try {
+    const res = await asset.query(apiKeyAliasMap())
+    if (res.length > 0) {
+      const secret = res[0].get(asset.Tag.SECRET)
+      if (secret !== undefined) {
+        return bytesToStr(secret as Uint8Array)
+      }
+    }
+  } catch (_e) {
+    // 无密钥或读取失败
+  }
+  return ''
+}
+
+async function saveApiKeyAsset(key: string): Promise<void> {
+  try {
+    await asset.remove(apiKeyAliasMap())
+  } catch (_e) {
+    // 尚无旧密钥
+  }
+  if (key.length === 0) { return }
+  const attr: asset.AssetMap = new Map<asset.Tag, asset.Value>()
+  attr.set(asset.Tag.ALIAS, strToBytes(ASSET_ALIAS))
+  attr.set(asset.Tag.SECRET, strToBytes(key))
+  attr.set(asset.Tag.ACCESSIBILITY, asset.Accessibility.DEVICE_FIRST_UNLOCKED)
+  await asset.add(attr)
+}
 
 let preferences: dataPreferences.Preferences | null = null
 
@@ -86,32 +137,75 @@ export async function initAIConfig(context: Context): Promise<void> {
 }
 
 export async function loadAIConfig(): Promise<AIConfig> {
-  if (!preferences) {
-    return DEFAULT_AI_CONFIG
+  let provider = DEFAULT_AI_CONFIG.provider
+  let apiKey = await loadApiKeyAsset()
+  let model = DEFAULT_AI_CONFIG.model
+  let baseUrl = ''
+  if (preferences) {
+    try {
+      provider = await preferences.get(KEY_PROVIDER, DEFAULT_AI_CONFIG.provider) as string
+      if (apiKey.length === 0) {
+        // 旧版本明文密钥兼容迁移
+        apiKey = await preferences.get(KEY_API_KEY, DEFAULT_AI_CONFIG.apiKey) as string
+      }
+      model = await preferences.get(KEY_MODEL, DEFAULT_AI_CONFIG.model) as string
+      baseUrl = await preferences.get(KEY_BASE_URL, '') as string
+    } catch (_e) {
+      // 读取失败时使用默认值
+    }
   }
-  try {
-    const provider = await preferences.get(KEY_PROVIDER, DEFAULT_AI_CONFIG.provider) as string
-    const apiKey = await preferences.get(KEY_API_KEY, DEFAULT_AI_CONFIG.apiKey) as string
-    const model = await preferences.get(KEY_MODEL, DEFAULT_AI_CONFIG.model) as string
-    const baseUrl = await preferences.get(KEY_BASE_URL, '') as string
-    return { provider, apiKey, model, baseUrl: baseUrl || undefined }
-  } catch (_e) {
-    return DEFAULT_AI_CONFIG
-  }
+  return { provider, apiKey, model, baseUrl: baseUrl || undefined }
 }
 
 export async function saveAIConfig(config: AIConfig): Promise<void> {
+  // 优先写入系统 Asset Store（加密）；失败时降级为 Preferences，保证功能可用
+  let assetSaved = false
+  try {
+    await saveApiKeyAsset(config.apiKey)
+    assetSaved = true
+  } catch (_e) {
+    assetSaved = false
+  }
   if (!preferences) {
     return
   }
   try {
     await preferences.put(KEY_PROVIDER, config.provider)
-    await preferences.put(KEY_API_KEY, config.apiKey)
     await preferences.put(KEY_MODEL, config.model)
     await preferences.put(KEY_BASE_URL, config.baseUrl || '')
+    if (assetSaved) {
+      // 加密存储成功后清理旧版本明文，避免“删除密钥后又被旧明文复活”
+      await preferences.delete(KEY_API_KEY)
+    } else {
+      // 降级存储：与旧版本行为一致
+      await preferences.put(KEY_API_KEY, config.apiKey)
+    }
     await preferences.flush()
   } catch (_e) {
     // Persistence failed; config stays in memory for the session
+  }
+}
+
+export async function loadLateZiHuanRi(): Promise<boolean> {
+  if (!preferences) {
+    return false
+  }
+  try {
+    return await preferences.get(KEY_LATE_ZI, false) as boolean
+  } catch (_e) {
+    return false
+  }
+}
+
+export async function saveLateZiHuanRi(v: boolean): Promise<void> {
+  if (!preferences) {
+    return
+  }
+  try {
+    await preferences.put(KEY_LATE_ZI, v)
+    await preferences.flush()
+  } catch (_e) {
+    // 持久化失败，保持会话内值
   }
 }
 

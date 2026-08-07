@@ -1,6 +1,7 @@
 import { COLORS, INK, OP, applyTheme } from '../common/constants'
 import {
-  AIConfig, AI_PROVIDERS, DEFAULT_AI_CONFIG, AIProvider, ProviderInfo, saveDarkMode
+  AIConfig, AI_PROVIDERS, DEFAULT_AI_CONFIG, AIProvider, ProviderInfo, saveDarkMode,
+  loadLateZiHuanRi, saveLateZiHuanRi
 } from '../services/aiService'
 import { exportReadingsToClipboard } from '../services/exportService'
 
@@ -9,9 +10,12 @@ export struct AISettingsModal {
   controller: CustomDialogController
   @StorageLink('uiDark') isDark: boolean = false
   @State localConfig: AIConfig = DEFAULT_AI_CONFIG
+  @State lateZiHuanRi: boolean = false
   onSave?: (config: AIConfig) => void
 
-  aboutToAppear() {}
+  async aboutToAppear() {
+    this.lateZiHuanRi = await loadLateZiHuanRi()
+  }
 
   async exportRecords(): Promise<void> {
     try {
@@ -111,6 +115,25 @@ export struct AISettingsModal {
                   AppStorage.setOrCreate('uiDark', v)
                   applyTheme(v)
                   saveDarkMode(v)
+                })
+            }
+            .width('100%').padding(10)
+            .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE }).borderRadius(10)
+          }
+
+          // 命理偏好
+          Column({ space: 8 }) {
+            Text('命理偏好 (Preferences)').fontSize(10).fontColor(INK.LABEL).fontWeight(FontWeight.Bold)
+            Row({ space: 12 }) {
+              Column({ space: 2 }) {
+                Text('晚子时换日').fontSize(11).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+                Text('23:00–24:00 出生按次日日柱排（子初换日派）').fontSize(8).fontColor(INK.PLACEHOLDER)
+              }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+              Toggle({ type: ToggleType.Switch, isOn: this.lateZiHuanRi })
+                .selectedColor(COLORS.IMPERIAL_RED)
+                .onChange((v: boolean) => {
+                  this.lateZiHuanRi = v
+                  saveLateZiHuanRi(v)
                 })
             }
             .width('100%').padding(10)
