@@ -700,7 +700,12 @@ export interface TodayInfo {
 }
 
 export function getTodayInfo(): TodayInfo {
+  // Cache by calendar day — same natural day returns same result
   const now = new Date()
+  const cacheKey = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate()
+  if (todayCacheKey === cacheKey && todayCache !== null) {
+    return todayCache
+  }
   const lunar = solarToLunar(now)
   const yearSBIdx = getYearStemBranchIndex(now.getFullYear())
   const daySBIdx = getDayStemBranchIndex(now)
@@ -728,7 +733,7 @@ export function getTodayInfo(): TodayInfo {
   }
   const termName = termIdx >= 0 ? TERM_NAMES[termIdx] : '冬至'
 
-  return {
+  const result: TodayInfo = {
     dateText: now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日',
     lunarText: lunarText,
     yearStemBranch: yearStemBranch,
@@ -739,7 +744,14 @@ export function getTodayInfo(): TodayInfo {
     hexSymbol: hex.symbol,
     hexNumber: hex.number
   }
+  todayCacheKey = cacheKey
+  todayCache = result
+  return result
 }
+
+// ----- Today info cache (same natural day = same result) -----
+let todayCacheKey: string = ''
+let todayCache: TodayInfo | null = null
 
 // ============================================================
 // 大运 (Dayun) computation

@@ -9,6 +9,7 @@ import {
 import {
   SavedBaziReading, saveBaziReading, loadBaziReadings, deleteBaziReading
 } from '../services/readingStore'
+import { formatBaziShareText } from '../services/exportService'
 import pasteboard from '@ohos.pasteboard'
 import { WuXingCycle } from './WuXingCycle'
 import { AIChatPanel } from './shared/AIChatPanel'
@@ -652,16 +653,21 @@ export struct BaziSection {
   copyResult(): void {
     if (!this.result) return
     const r = this.result
-    const text =
-      '【天道玄机 · 八字排盘】\n' +
-      '生辰：' + this.date + ' ' + this.time + '（' + (this.gender === 'male' ? '男' : '女') + '）\n' +
-      '四柱：' + r.year.stem + r.year.branch + ' ' + r.month.stem + r.month.branch + ' ' +
-      r.day.stem + r.day.branch + ' ' + r.hour.stem + r.hour.branch + '\n' +
-      '日主：' + r.dayMaster + '（' + (r.dayMasterAnalysis.split('属')[1] || '').split('。')[0] + '）\n' +
-      (r.structure ? '格局：' + r.structure.name + '\n' : '') +
-      (r.mingGong ? '命宫：' + r.mingGong.stem + r.mingGong.branch + '\n' : '') +
-      (r.taiYuan ? '胎元：' + r.taiYuan.stem + r.taiYuan.branch + '\n' : '') +
-      '—— 天道玄机 · 仅供文化娱乐参考'
+    let text = formatBaziShareText(
+      this.date, this.time, this.gender,
+      r.year.stem, r.year.branch, r.month.stem, r.month.branch,
+      r.day.stem, r.day.branch, r.hour.stem, r.hour.branch,
+      r.dayMaster, r.dayMasterAnalysis,
+      r.structure ? r.structure.name : '', r.structure ? r.structure.description : ''
+    )
+    if (r.mingGong) { text += '命宫：' + r.mingGong.stem + r.mingGong.branch + '\n' }
+    if (r.taiYuan) { text += '胎元：' + r.taiYuan.stem + r.taiYuan.branch + '\n' }
+    if (this.trueSolar) {
+      text += '真太阳时：' + this.pad2(this.trueSolar.correctedDate.getHours()) + ':' +
+        this.pad2(this.trueSolar.correctedDate.getMinutes()) +
+        '（校正' + this.trueSolar.correctionMinutes + '分钟）\n'
+    }
+    text += '—— 天道玄机 · 仅供文化娱乐参考'
     const data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text)
     pasteboard.getSystemPasteboard().setData(data).then(() => {
       this.getUIContext().getPromptAction().showToast({ message: '排盘结果已复制' })

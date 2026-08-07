@@ -2,6 +2,7 @@ import { COLORS, INK, OP, applyTheme } from '../common/constants'
 import {
   AIConfig, AI_PROVIDERS, DEFAULT_AI_CONFIG, AIProvider, ProviderInfo, saveDarkMode
 } from '../services/aiService'
+import { exportReadingsToClipboard } from '../services/exportService'
 
 @CustomDialog
 export struct AISettingsModal {
@@ -11,6 +12,15 @@ export struct AISettingsModal {
   onSave?: (config: AIConfig) => void
 
   aboutToAppear() {}
+
+  async exportRecords(): Promise<void> {
+    try {
+      await exportReadingsToClipboard()
+      this.getUIContext().getPromptAction().showToast({ message: '记录已导出到剪贴板' })
+    } catch (e) {
+      this.getUIContext().getPromptAction().showToast({ message: '导出失败' })
+    }
+  }
 
   build() {
     Column() {
@@ -105,6 +115,20 @@ export struct AISettingsModal {
             }
             .width('100%').padding(10)
             .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE }).borderRadius(10)
+          }
+
+          // Data management
+          Column({ space: 8 }) {
+            Text('数据管理 (Data)').fontSize(10).fontColor(INK.LABEL).fontWeight(FontWeight.Bold)
+            Row({ space: 12 }) {
+              Button('导出我的记录').fontSize(11).fontWeight(FontWeight.Bold)
+                .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK).layoutWeight(1)
+                .padding({ top: 10, bottom: 10 }).borderRadius(10)
+                .onClick(() => { this.exportRecords() })
+            }
+            .width('100%')
+            Text('八字与卦象记录以 JSON 备份到剪贴板，可粘贴保存。')
+              .fontSize(8).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
           }
 
           // Privacy note

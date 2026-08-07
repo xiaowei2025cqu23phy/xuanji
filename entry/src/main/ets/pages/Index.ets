@@ -1,10 +1,12 @@
-import { COLORS, INK, RED, OP, applyTheme } from '../common/constants'
+import { COLORS, INK, RED, OP, applyTheme, isDarkMode } from '../common/constants'
 import { BaziSection } from '../components/BaziSection'
 import { IChingSection } from '../components/IChingSection'
 import { CosmologySection } from '../components/CosmologySection'
 import { AlmanacSection } from '../components/AlmanacSection'
 import { SolarTermSection } from '../components/SolarTermSection'
 import { ZodiacSection } from '../components/ZodiacSection'
+import { ZodiacCompatSection } from '../components/ZodiacCompatSection'
+import { HourLuckSection } from '../components/HourLuckSection'
 import { AISettingsModal } from '../components/AISettingsModal'
 import {
   AIConfig, DEFAULT_AI_CONFIG, loadAIConfig, saveAIConfig, loadDarkMode, saveDarkMode
@@ -41,6 +43,12 @@ struct Index {
     this.aiConfig = await loadAIConfig()
   }
 
+  toggleTheme(): void {
+    this.isDark = !this.isDark
+    applyTheme(this.isDark)
+    saveDarkMode(this.isDark)
+  }
+
   build() {
     Stack() {
       Scroll() {
@@ -58,6 +66,10 @@ struct Index {
             SolarTermSection().padding({ left: 24, right: 24, bottom: 24 })
           } else if (this.activeTab === 'zodiac') {
             ZodiacSection().padding({ left: 24, right: 24, bottom: 24 })
+          } else if (this.activeTab === 'compat') {
+            ZodiacCompatSection().padding({ left: 24, right: 24, bottom: 24 })
+          } else if (this.activeTab === 'hourluck') {
+            HourLuckSection().padding({ left: 24, right: 24, bottom: 24 })
           } else {
             CosmologySection().padding({ left: 24, right: 24, bottom: 24 })
           }
@@ -68,8 +80,14 @@ struct Index {
       .width('100%').height('100%').scrollable(ScrollDirection.Vertical)
       .scrollBar(BarState.Off).edgeEffect(EdgeEffect.Spring)
 
-      // Settings button
-      Row() {
+      // Settings + theme toggle buttons
+      Row({ space: 8 }) {
+        Button(this.isDark ? '☀' : '☾').fontSize(16).fontColor(INK.SECONDARY)
+          .backgroundColor(COLORS.WHITE + 'E6')
+          .border({ width: 1, color: INK.FAINT }).borderRadius(24)
+          .width(44).height(44)
+          .shadow({ radius: 8, color: COLORS.INK_BLACK + OP.LIGHT })
+          .onClick(() => { this.toggleTheme() })
         Button('⚙').fontSize(18).fontColor(INK.SECONDARY)
           .backgroundColor(COLORS.WHITE + 'E6')
           .border({ width: 1, color: INK.FAINT }).borderRadius(24)
@@ -193,7 +211,9 @@ struct Index {
         this.TabButton('iching', '周易起卦')
         this.TabButton('almanac', '黄历')
         this.TabButton('solar', '节气')
+        this.TabButton('hourluck', '吉时')
         this.TabButton('zodiac', '生肖')
+        this.TabButton('compat', '配对')
         this.TabButton('cosmos', '易理图鉴')
       }
     }
@@ -213,7 +233,7 @@ struct Index {
 
   @Builder FooterSection() {
     Column({ space: 14 }) {
-      Divider().color(COLORS.DARK_GOLD + '1A')
+      Divider().color(INK.BORDER)
       Row({ space: 16 }) {
         Text('梅花易数 MEIHUA').fontSize(8).fontColor(INK.BODY).fontWeight(FontWeight.Bold)
         Text('·').fontSize(8).fontColor(INK.PLACEHOLDER)

@@ -14,6 +14,7 @@ import {
   SavedIChingReading, saveIChingReading, loadIChingReadings, deleteIChingReading
 } from '../services/readingStore'
 import { buildOfflineIChingReport } from '../services/offlineInterpreter'
+import { formatIChingShareText } from '../services/exportService'
 import pasteboard from '@ohos.pasteboard'
 
 interface Line {
@@ -40,16 +41,20 @@ interface DivinationResult {
   lineDetails: LineDetail[]
 }
 
-// Pre-build all 64 hexagrams for search
+// Pre-build all 64 hexagrams for search (lazy-initialized on first search)
+let allHexagramsCache: Hexagram[] | null = null
 function getAllHexagrams(): Hexagram[] {
+  if (allHexagramsCache !== null) {
+    return allHexagramsCache
+  }
   const hexagrams: Hexagram[] = []
   for (let i = 0; i < 64; i++) {
     const bin = i.toString(2).padStart(6, '0')
     hexagrams.push(GET_HEX_BY_BINARY(bin))
   }
+  allHexagramsCache = hexagrams
   return hexagrams
 }
-const ALL_HEXAGRAMS: Hexagram[] = getAllHexagrams()
 
 // Trigram lookup (3-bit binary → name/nature/element)
 interface TrigramBrief { name: string; nature: string; element: string }
@@ -233,7 +238,7 @@ export struct IChingSection {
   onSearch(query: string): void {
     if (query.trim().length === 0) { this.searchResults = []; this.showSearch = false; return }
     const q = query.trim().toLowerCase()
-    this.searchResults = ALL_HEXAGRAMS.filter(h =>
+    this.searchResults = getAllHexagrams().filter(h =>
       h.name.includes(q) || h.pinyin.toLowerCase().includes(q) ||
       h.judgement.includes(q) || h.meaning.includes(q)
     )
@@ -867,14 +872,13 @@ export struct IChingSection {
   copyResult(): void {
     if (!this.result) return
     const r = this.result
-    let text = '【天道玄机 · 周易起卦】\n' +
-      '本卦：' + r.originalHex.symbol + ' ' + r.originalHex.name + '（第' + r.originalHex.number + '卦）\n' +
-      '卦辞：' + r.originalHex.judgement + '\n' +
-      '释义：' + r.originalHex.meaning + '\n'
-    if (r.changedHex) { text += '变卦：' + r.changedHex.symbol + ' ' + r.changedHex.name + '\n' }
-    text += '体用：' + r.tiYong.ti + '(' + r.tiYong.tiElement + ') 为体，' +
-      r.tiYong.yong + '(' + r.tiYong.yongElement + ') 为用 · ' + r.tiYong.relation + '\n' +
-      '—— 天道玄机 · 仅供文化娱乐参考'
+    const text = formatIChingShareText(
+      r.originalHex.symbol, r.originalHex.name, r.originalHex.number,
+      r.originalHex.judgement, r.originalHex.meaning,
+      r.changedHex ? r.changedHex.symbol : '', r.changedHex ? r.changedHex.name : '',
+      r.tiYong.ti, r.tiYong.tiElement, r.tiYong.yong, r.tiYong.yongElement,
+      r.tiYong.relation, r.movingIndexes.length
+    )
     const data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text)
     pasteboard.getSystemPasteboard().setData(data).then(() => {
       this.getUIContext().getPromptAction().showToast({ message: '卦象结果已复制' })

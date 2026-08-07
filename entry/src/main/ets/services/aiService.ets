@@ -154,7 +154,14 @@ function createRequestOptions(method: http.RequestMethod, headers: Record<string
 
 function safeString(val: Object | undefined | null): string {
   if (val === undefined || val === null) return ''
-  return val as string
+  if (typeof val === 'string') return val
+  return String(val)
+}
+
+// Truncate response body for error messages (avoid leaking huge HTML pages)
+function truncateBody(s: string, max: number): string {
+  if (s.length <= max) return s
+  return s.substring(0, max) + '...'
 }
 
 // ----- API callers -----
@@ -227,7 +234,11 @@ async function callOpenAICompatibleAPI(messages: ChatMessage[], config: AIConfig
     if (response.responseCode === 429) {
       return 'API 调用频率超限，请稍后重试。'
     }
-    return 'API 请求失败 (HTTP ' + response.responseCode + ')。请检查网络与配置。'
+    if (response.responseCode === 404) {
+      return 'API 接口地址未找到 (404)。请检查 Base URL 配置。'
+    }
+    const bodySnippet = truncateBody(response.result as string, 200)
+    return 'API 请求失败 (HTTP ' + response.responseCode + ')。响应：' + bodySnippet
   } catch (e) {
     const errMsg = (e as Object).toString()
     if (errMsg.includes('timeout') || errMsg.includes('Timeout')) {
@@ -298,7 +309,8 @@ async function callGeminiAPI(messages: ChatMessage[], config: AIConfig): Promise
     }
 
     if (response.responseCode === 400) {
-      return 'Gemini API 请求参数错误。请检查模型名称是否正确。'
+      const body400 = truncateBody(response.result as string, 200)
+      return 'Gemini API 请求参数错误。请检查模型名称是否正确。响应：' + body400
     }
     if (response.responseCode === 403) {
       return 'Gemini API 密钥无效或权限不足。请检查设置。'
@@ -306,7 +318,8 @@ async function callGeminiAPI(messages: ChatMessage[], config: AIConfig): Promise
     if (response.responseCode === 429) {
       return 'Gemini API 调用频率超限，请稍后重试。'
     }
-    return 'Gemini API 请求失败 (HTTP ' + response.responseCode + ')'
+    const bodySnippet = truncateBody(response.result as string, 200)
+    return 'Gemini API 请求失败 (HTTP ' + response.responseCode + ')。响应：' + bodySnippet
   } catch (e) {
     const errMsg = (e as Object).toString()
     if (errMsg.includes('timeout') || errMsg.includes('Timeout')) {
