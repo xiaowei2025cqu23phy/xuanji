@@ -7,11 +7,48 @@ import { GET_HEX_BY_BINARY } from '../model/iching-data'
 
 export type AIProvider = string
 
+// --- API response type definitions ---
 interface GeminiPart { text: string }
 interface GeminiSystemInstruction { parts: GeminiPart[] }
 interface GeminiRequestBody {
   contents: ChatMessage[]
   systemInstruction: GeminiSystemInstruction
+}
+
+interface OpenAIMessageResp {
+  role: string
+  content: string
+}
+
+interface OpenAIChoice {
+  index: number
+  message: OpenAIMessageResp
+  finish_reason?: string
+}
+
+interface OpenAIResponse {
+  id: string
+  object: string
+  created: number
+  model: string
+  choices: OpenAIChoice[]
+}
+
+interface GeminiCandidate {
+  content: { role: string; parts: GeminiPart[] }
+  finishReason?: string
+  safetyRatings?: Object[]
+}
+
+interface GeminiPromptFeedback {
+  blockReason?: string
+  safetyRatings?: Object[]
+}
+
+interface GeminiResponse {
+  candidates: GeminiCandidate[]
+  promptFeedback?: GeminiPromptFeedback
+  usageMetadata?: Object
 }
 
 export interface AIConfig {
@@ -309,12 +346,9 @@ async function callOpenAICompatibleAPI(messages: ChatMessage[], config: AIConfig
     )
 
     if (response.responseCode === 200) {
-      const data = JSON.parse(response.result as string) as Record<string, Object>
-      const choices = data['choices'] as Object[]
-      if (choices && choices.length > 0) {
-        const firstChoice = choices[0] as Record<string, Object>
-        const msgObj = firstChoice['message'] as Record<string, Object>
-        const content = safeString(msgObj['content'])
+      const data = JSON.parse(response.result as string) as OpenAIResponse
+      if (data.choices && data.choices.length > 0) {
+        const content = safeString(data.choices[0].message.content)
         if (content.length > 0) {
           return content
         }
@@ -377,24 +411,20 @@ async function callGeminiAPI(messages: ChatMessage[], config: AIConfig): Promise
     )
 
     if (response.responseCode === 200) {
-      const data = JSON.parse(response.result as string) as Record<string, Object>
-      const candidates = data['candidates'] as Object[]
-      if (candidates && candidates.length > 0) {
-        const first = candidates[0] as Record<string, Object>
-        const content = first['content'] as Record<string, Object>
-        const parts = content['parts'] as Object[]
+      const data = JSON.parse(response.result as string) as GeminiResponse
+      if (data.candidates && data.candidates.length > 0) {
+        const first = data.candidates[0]
+        const parts = first.content.parts
         if (parts && parts.length > 0) {
-          const part = parts[0] as Record<string, Object>
-          const text = safeString(part['text'])
+          const text = safeString(parts[0].text)
           if (text.length > 0) {
             return text
           }
         }
       }
       // Check for safety block
-      const promptFeedback = data['promptFeedback'] as Record<string, Object> | undefined
-      if (promptFeedback) {
-        const blockReason = safeString(promptFeedback['blockReason'])
+      if (data.promptFeedback) {
+        const blockReason = safeString(data.promptFeedback.blockReason)
         if (blockReason.length > 0) {
           return '内容被 Gemini 安全策略拦截：' + blockReason
         }

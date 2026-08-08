@@ -1,7 +1,6 @@
-import { COLORS, INK, RED, EARTHLY_BRANCHES } from '../common/constants'
+import { COLORS, INK, RED, EARTHLY_BRANCHES, ZODIAC_NAMES } from '../common/constants'
 import { getYearStemBranch, getAlmanac } from '../model/lunar-service'
 
-const ZODIAC_NAMES: string[] = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪']
 const ZODIAC_FORTUNE: string[] = [
   '机遇与变动并存，宜顺势而为，善用人脉网络带来的机会，注意劳逸结合。',
   '稳重守成之年，宜深耕本职，财帛稳定，感情上多些主动沟通。',

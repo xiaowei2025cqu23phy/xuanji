@@ -1,7 +1,6 @@
-import { COLORS, INK, RED, OP, EARTHLY_BRANCHES } from '../common/constants'
+import { COLORS, INK, RED, OP, EARTHLY_BRANCHES, ZODIAC_NAMES } from '../common/constants'
 import { getZodiacRelation, ZodiacRelation, getAllZodiacPairs, ZodiacPairEntry } from '../model/zodiac-compat'
 
-const ZODIAC_NAMES: string[] = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪']
 const ZODIAC_EMOJI: string[] = ['🐭', '🐮', '🐯', '🐰', '🐲', '🐍', '🐴', '🐑', '🐵', '🐔', '🐶', '🐷']
 
 @Component

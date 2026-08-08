@@ -16,6 +16,30 @@ import {
 } from '../services/aiService'
 import { getTodayInfo, TodayInfo } from '../model/lunar-service'
 
+// ---- Tab configuration ----
+interface TabConfig {
+  id: string
+  label: string
+  isPrimary: boolean   // shown in top tab bar
+}
+
+const MAIN_TABS: TabConfig[] = [
+  { id: 'bazi',     label: '生辰八字', isPrimary: true },
+  { id: 'iching',   label: '周易起卦', isPrimary: true },
+  { id: 'almanac',  label: '黄历',     isPrimary: true },
+  { id: 'hourluck', label: '吉时',     isPrimary: true },
+  { id: 'more',     label: '更多',     isPrimary: true },
+]
+
+// Secondary tabs accessed from "更多" — not shown in main bar
+const SECONDARY_IDS: Set<string> = new Set([
+  'solar', 'zodiac', 'compat', 'cosmos', 'hehun', 'privacy'
+])
+
+function isHiddenTab(tab: string): boolean {
+  return SECONDARY_IDS.has(tab) || tab === 'more'
+}
+
 @Entry
 @Component
 struct Index {
@@ -54,6 +78,12 @@ struct Index {
     saveDarkMode(this.isDark)
   }
 
+  // ---- Tab active state ----
+  isTabActive(tab: string): boolean {
+    if (tab === 'more') return isHiddenTab(this.activeTab)
+    return this.activeTab === tab
+  }
+
   build() {
     Stack() {
       Scroll() {
@@ -61,29 +91,7 @@ struct Index {
           this.HeaderSection()
           this.TodayCard()
           this.TabNavigation()
-          if (this.activeTab === 'bazi') {
-            BaziSection({ aiConfig: this.aiConfig }).padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'iching') {
-            IChingSection({ aiConfig: this.aiConfig }).padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'almanac') {
-            AlmanacSection().padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'hourluck') {
-            HourLuckSection().padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'hehun') {
-            HehunSection().padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'privacy') {
-            PrivacySection().padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'more') {
-            MoreSection({ onSelect: (id: string) => { this.activeTab = id } }).padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'solar') {
-            SolarTermSection().padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'zodiac') {
-            ZodiacSection().padding({ left: 24, right: 24, bottom: 24 })
-          } else if (this.activeTab === 'compat') {
-            ZodiacCompatSection().padding({ left: 24, right: 24, bottom: 24 })
-          } else {
-            CosmologySection().padding({ left: 24, right: 24, bottom: 24 })
-          }
+          this.RenderContent()
           this.FooterSection()
         }
         .width('100%').height('100%')
@@ -117,6 +125,54 @@ struct Index {
     .linearGradient({ angle: 165, colors: [[COLORS.PAPER, 0.0], [COLORS.ACTIVE_CARD_BG, 1.0]] })
   }
 
+  // ---- Tab content lookup ----
+  @Builder RenderContent() {
+    if (this.activeTab === 'bazi') {
+      BaziSection({ aiConfig: this.aiConfig }).padding({ left: 24, right: 24, bottom: 24 })
+    } else if (this.activeTab === 'iching') {
+      IChingSection({ aiConfig: this.aiConfig }).padding({ left: 24, right: 24, bottom: 24 })
+    } else if (this.activeTab === 'almanac') {
+      AlmanacSection().padding({ left: 24, right: 24, bottom: 24 })
+    } else if (this.activeTab === 'hourluck') {
+      HourLuckSection().padding({ left: 24, right: 24, bottom: 24 })
+    } else if (this.activeTab === 'hehun') {
+      HehunSection().padding({ left: 24, right: 24, bottom: 24 })
+    } else if (this.activeTab === 'privacy') {
+      PrivacySection().padding({ left: 24, right: 24, bottom: 24 })
+    } else if (this.activeTab === 'more') {
+      MoreSection({ onSelect: (id: string) => { this.activeTab = id } })
+        .padding({ left: 24, right: 24, bottom: 24 })
+    } else if (this.activeTab === 'solar') {
+      SolarTermSection().padding({ left: 24, right: 24, bottom: 24 })
+    } else if (this.activeTab === 'zodiac') {
+      ZodiacSection().padding({ left: 24, right: 24, bottom: 24 })
+    } else if (this.activeTab === 'compat') {
+      ZodiacCompatSection().padding({ left: 24, right: 24, bottom: 24 })
+    } else {
+      CosmologySection().padding({ left: 24, right: 24, bottom: 24 })
+    }
+  }
+
+  // ---- Tab bar rendered from config ----
+  @Builder TabNavigation() {
+    Scroll() {
+      Row({ space: 6 }) {
+        ForEach(MAIN_TABS, (tab: TabConfig) => {
+          Button(tab.label).fontSize(13).fontWeight(FontWeight.Bold)
+            .fontColor(this.isTabActive(tab.id) ? COLORS.WHITE : INK.SECONDARY)
+            .backgroundColor(this.isTabActive(tab.id) ? COLORS.INK_BLACK : COLORS.WHITE + '80')
+            .padding({ left: 16, right: 16, top: 11, bottom: 11 })
+            .borderRadius(14)
+            .animation({ duration: 200, curve: Curve.EaseOut })
+            .onClick(() => { this.activeTab = tab.id })
+        })
+      }
+    }
+    .scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off).edgeEffect(EdgeEffect.Spring)
+    .width('100%').padding({ left: 24, right: 24, bottom: 24 })
+  }
+
+  // ---- Background ----
   @Builder BackgroundDecorations() {
     Stack() {
       // Four corner lattice decorations
@@ -156,6 +212,7 @@ struct Index {
     .width('100%').height('100%').hitTestBehavior(HitTestMode.None)
   }
 
+  // ---- Header ----
   @Builder HeaderSection() {
     Column({ space: 16 }) {
       Row({ space: 14 }) {
@@ -187,6 +244,7 @@ struct Index {
     .width('100%').padding({ left: 24, right: 24, top: 56, bottom: 20 })
   }
 
+  // ---- Today card ----
   @Builder TodayCard() {
     if (this.today) {
       Row({ space: 16 }) {
@@ -215,42 +273,7 @@ struct Index {
     }
   }
 
-  @Builder TabNavigation() {
-    Scroll() {
-      Row({ space: 6 }) {
-        this.TabButton('bazi', '生辰八字')
-        this.TabButton('iching', '周易起卦')
-        this.TabButton('almanac', '黄历')
-        this.TabButton('hourluck', '吉时')
-        this.TabButton('more', '更多')
-      }
-    }
-    .scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off).edgeEffect(EdgeEffect.Spring)
-    .width('100%').padding({ left: 24, right: 24, bottom: 24 })
-  }
-
-  @Builder TabButton(tab: string, label: string) {
-    Button(label).fontSize(13).fontWeight(FontWeight.Bold)
-      .fontColor(this.isTabActive(tab) ? COLORS.WHITE : INK.SECONDARY)
-      .backgroundColor(this.isTabActive(tab) ? COLORS.INK_BLACK : COLORS.WHITE + '80')
-      .padding({ left: 16, right: 16, top: 11, bottom: 11 })
-      .borderRadius(14)
-      .animation({ duration: 200, curve: Curve.EaseOut })
-      .onClick(() => { this.activeTab = tab })
-  }
-
-  isTabActive(tab: string): boolean {
-    if (tab === 'more') {
-      return this.isHiddenTab(this.activeTab)
-    }
-    return this.activeTab === tab
-  }
-
-  isHiddenTab(tab: string): boolean {
-    return tab === 'solar' || tab === 'zodiac' || tab === 'compat' ||
-      tab === 'cosmos' || tab === 'hehun' || tab === 'privacy' || tab === 'more'
-  }
-
+  // ---- Footer ----
   @Builder FooterSection() {
     Column({ space: 14 }) {
       Divider().color(INK.BORDER)

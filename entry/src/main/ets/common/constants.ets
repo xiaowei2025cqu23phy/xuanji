@@ -1,123 +1,13 @@
 // ============================================================
 // Color Palette - Ink Wash Aesthetic (Light / Dark adaptive)
 // ============================================================
-interface ColorTokens {
-  PAPER: string
-  INK_BLACK: string
-  IMPERIAL_RED: string
-  AMBER_GOLD: string
-  DARK_GOLD: string
-  ACTIVE_CARD_BG: string
-  WHITE: string
-  WOOD: string
-  FIRE: string
-  EARTH: string
-  METAL: string
-  WATER: string
-  DARK_BG: string
-  DARK_SURFACE: string
-  DARK_CARD: string
-  DARK_BORDER: string
-  DARK_TEXT_PRIMARY: string
-  DARK_TEXT_SECONDARY: string
-  DARK_TEXT_CAPTION: string
-  DARK_RED: string
-  DARK_GOLD_BRIGHT: string
-  alpha: (hex: string, opacity: number) => string
-}
+// Theme tokens are @Observed class instances so ArkUI components
+// can use @ObjectLink for deep reactivity on color changes.
+// The singleton exports (COLORS, INK, RED) maintain the legacy
+// static-import API while being compatible with ArkUI state management.
+// ============================================================
 
-// Light mode (ink wash)
-export const COLORS: ColorTokens = {
-  PAPER: '#F4EFDF',
-  INK_BLACK: '#1A1A1C',
-  IMPERIAL_RED: '#B91C1C',
-  AMBER_GOLD: '#A67C52',
-  DARK_GOLD: '#5D4A2A',
-  ACTIVE_CARD_BG: '#FDFAF3',
-  WHITE: '#FFFFFF',
-  WOOD: '#2D5A27',
-  FIRE: '#C23B22',
-  EARTH: '#7C512D',
-  METAL: '#8A8A8A',
-  WATER: '#1E3A8A',
-
-  // Dark mode palette (kept for reference / fallback)
-  DARK_BG: '#1A1A1C',
-  DARK_SURFACE: '#252528',
-  DARK_CARD: '#2C2C30',
-  DARK_BORDER: '#3A3A3C',
-  DARK_TEXT_PRIMARY: '#E8E8E1',
-  DARK_TEXT_SECONDARY: '#A0A0A0',
-  DARK_TEXT_CAPTION: '#6E6E6E',
-  DARK_RED: '#E04545',
-  DARK_GOLD_BRIGHT: '#C4A46C',
-
-  alpha: (hex: string, opacity: number): string => {
-    const clamped = Math.max(0, Math.min(1, opacity))
-    const byte = Math.round(clamped * 255)
-    const suffix = byte.toString(16).toUpperCase().padStart(2, '0')
-    return hex + suffix
-  }
-}
-
-let darkModeActive: boolean = false
-
-export function isDarkMode(): boolean {
-  return darkModeActive
-}
-
-export function applyTheme(dark: boolean): void {
-  darkModeActive = dark
-  if (dark) {
-    // Paper-ink inversion: dark paper, light ink
-    COLORS.PAPER = '#131316'
-    COLORS.INK_BLACK = '#ECE8DC'
-    COLORS.IMPERIAL_RED = '#E05252'
-    COLORS.AMBER_GOLD = '#C9A46B'
-    COLORS.DARK_GOLD = '#C9A46B'
-    COLORS.ACTIVE_CARD_BG = '#26262B'
-    COLORS.WHITE = '#202024'
-    COLORS.WOOD = '#4C8A45'
-    COLORS.FIRE = '#D9543B'
-    COLORS.EARTH = '#A97845'
-    COLORS.METAL = '#B4B4B4'
-    COLORS.WATER = '#5B82D8'
-    COLORS.DARK_BG = '#131316'
-    COLORS.DARK_SURFACE = '#202024'
-    COLORS.DARK_CARD = '#26262B'
-    COLORS.DARK_BORDER = '#3A3A3C'
-    COLORS.DARK_TEXT_PRIMARY = '#ECE8DC'
-    COLORS.DARK_TEXT_SECONDARY = '#B0B0B0'
-    COLORS.DARK_TEXT_CAPTION = '#7A7A7A'
-    COLORS.DARK_RED = '#E05252'
-    COLORS.DARK_GOLD_BRIGHT = '#C9A46B'
-  } else {
-    COLORS.PAPER = '#F4EFDF'
-    COLORS.INK_BLACK = '#1A1A1C'
-    COLORS.IMPERIAL_RED = '#B91C1C'
-    COLORS.AMBER_GOLD = '#A67C52'
-    COLORS.DARK_GOLD = '#5D4A2A'
-    COLORS.ACTIVE_CARD_BG = '#FDFAF3'
-    COLORS.WHITE = '#FFFFFF'
-    COLORS.WOOD = '#2D5A27'
-    COLORS.FIRE = '#C23B22'
-    COLORS.EARTH = '#7C512D'
-    COLORS.METAL = '#8A8A8A'
-    COLORS.WATER = '#1E3A8A'
-    COLORS.DARK_BG = '#1A1A1C'
-    COLORS.DARK_SURFACE = '#252528'
-    COLORS.DARK_CARD = '#2C2C30'
-    COLORS.DARK_BORDER = '#3A3A3C'
-    COLORS.DARK_TEXT_PRIMARY = '#E8E8E1'
-    COLORS.DARK_TEXT_SECONDARY = '#A0A0A0'
-    COLORS.DARK_TEXT_CAPTION = '#6E6E6E'
-    COLORS.DARK_RED = '#E04545'
-    COLORS.DARK_GOLD_BRIGHT = '#C4A46C'
-  }
-  refreshElementColors()
-}
-
-// Common opacity token shortcuts (hex suffix for colors without alpha channel)
+// --- Common opacity token shortcuts (hex suffix) ---
 export interface OpColors {
   FULL: string
   HIGH: string
@@ -146,57 +36,124 @@ export const OP: OpColors = {
   GHOST:  '03',
 }
 
-// Pre-composed semantic ink colors (avoids repeated `COLORS.INK_BLACK + OP.XXX` inline)
-export interface InkColors {
-  PRIMARY: string
-  SECONDARY: string
-  BODY: string
-  CAPTION: string
-  LABEL: string
-  BORDER: string
-  HAIRLINE: string
-  FAINT: string
-  BG_LIGHT: string
-  BG_MEDIUM: string
-  BG_FAINT: string
-  PLACEHOLDER: string
+// ============================================================
+// @Observed theme token classes
+// ============================================================
+
+function hexAlpha(hex: string, opacity: number): string {
+  const clamped = Math.max(0, Math.min(1, opacity))
+  const byte = Math.round(clamped * 255)
+  const suffix = byte.toString(16).toUpperCase().padStart(2, '0')
+  return hex + suffix
 }
 
-export const INK: InkColors = {
-  PRIMARY: COLORS.INK_BLACK,
-  SECONDARY: COLORS.INK_BLACK + OP.LOW,
-  BODY: COLORS.INK_BLACK + '80',
-  CAPTION: COLORS.INK_BLACK + OP.X_LOW,
-  LABEL: COLORS.INK_BLACK + OP.MEDIUM,
-  BORDER: COLORS.INK_BLACK + OP.FAINT,
-  HAIRLINE: COLORS.INK_BLACK + OP.X_FAINT,
-  FAINT: COLORS.INK_BLACK + OP.FAINT,
-  BG_LIGHT: COLORS.INK_BLACK + OP.TINY,
-  BG_MEDIUM: COLORS.INK_BLACK + OP.TRACE,
-  BG_FAINT: COLORS.INK_BLACK + OP.GHOST,
-  PLACEHOLDER: COLORS.INK_BLACK + OP.LIGHT,
+@Observed
+export class ThemeColors {
+  PAPER: string = '#F4EFDF'
+  INK_BLACK: string = '#1A1A1C'
+  IMPERIAL_RED: string = '#B91C1C'
+  AMBER_GOLD: string = '#A67C52'
+  DARK_GOLD: string = '#5D4A2A'
+  ACTIVE_CARD_BG: string = '#FDFAF3'
+  WHITE: string = '#FFFFFF'
+  WOOD: string = '#2D5A27'
+  FIRE: string = '#C23B22'
+  EARTH: string = '#7C512D'
+  METAL: string = '#8A8A8A'
+  WATER: string = '#1E3A8A'
+  // Dark mode palette (kept for reference / fallback)
+  DARK_BG: string = '#1A1A1C'
+  DARK_SURFACE: string = '#252528'
+  DARK_CARD: string = '#2C2C30'
+  DARK_BORDER: string = '#3A3A3C'
+  DARK_TEXT_PRIMARY: string = '#E8E8E1'
+  DARK_TEXT_SECONDARY: string = '#A0A0A0'
+  DARK_TEXT_CAPTION: string = '#6E6E6E'
+  DARK_RED: string = '#E04545'
+  DARK_GOLD_BRIGHT: string = '#C4A46C'
+
+  alpha(hex: string, opacity: number): string {
+    return hexAlpha(hex, opacity)
+  }
 }
 
-// Pre-composed imperial red colors
-export interface RedColors {
-  PRIMARY: string
-  BORDER: string
-  BG_LIGHT: string
-  BG_MEDIUM: string
-  BG_FAINT: string
-  LABEL: string
+@Observed
+export class InkTokens {
+  PRIMARY: string = '#000000'
+  SECONDARY: string = '#000000'
+  BODY: string = '#000000'
+  CAPTION: string = '#000000'
+  LABEL: string = '#000000'
+  BORDER: string = '#000000'
+  HAIRLINE: string = '#000000'
+  FAINT: string = '#000000'
+  BG_LIGHT: string = '#000000'
+  BG_MEDIUM: string = '#000000'
+  BG_FAINT: string = '#000000'
+  PLACEHOLDER: string = '#000000'
 }
 
-export const RED: RedColors = {
-  PRIMARY: COLORS.IMPERIAL_RED,
-  BORDER: COLORS.IMPERIAL_RED + OP.LIGHT,
-  BG_LIGHT: COLORS.IMPERIAL_RED + '0F',
-  BG_MEDIUM: COLORS.IMPERIAL_RED + OP.TINY,
-  BG_FAINT: COLORS.IMPERIAL_RED + OP.TRACE,
-  LABEL: COLORS.IMPERIAL_RED + OP.MEDIUM,
+@Observed
+export class RedTokens {
+  PRIMARY: string = '#000000'
+  BORDER: string = '#000000'
+  BG_LIGHT: string = '#000000'
+  BG_MEDIUM: string = '#000000'
+  BG_FAINT: string = '#000000'
+  LABEL: string = '#000000'
 }
 
-// Refresh derived tokens after theme switch
+// Singleton exports — components import these for static access.
+// They are @Observed class instances, so @State / @ObjectLink
+// usage in components gets proper deep reactivity.
+export const COLORS = new ThemeColors()
+export const INK = new InkTokens()
+export const RED = new RedTokens()
+
+// ============================================================
+// Theme state management
+// ============================================================
+
+let darkModeActive: boolean = false
+
+export function isDarkMode(): boolean {
+  return darkModeActive
+}
+
+// Light / dark palette presets
+const LIGHT_VALUES: Partial<ThemeColors> = {
+  PAPER: '#F4EFDF', INK_BLACK: '#1A1A1C', IMPERIAL_RED: '#B91C1C',
+  AMBER_GOLD: '#A67C52', DARK_GOLD: '#5D4A2A', ACTIVE_CARD_BG: '#FDFAF3',
+  WHITE: '#FFFFFF', WOOD: '#2D5A27', FIRE: '#C23B22', EARTH: '#7C512D',
+  METAL: '#8A8A8A', WATER: '#1E3A8A',
+  DARK_BG: '#1A1A1C', DARK_SURFACE: '#252528', DARK_CARD: '#2C2C30',
+  DARK_BORDER: '#3A3A3C', DARK_TEXT_PRIMARY: '#E8E8E1',
+  DARK_TEXT_SECONDARY: '#A0A0A0', DARK_TEXT_CAPTION: '#6E6E6E',
+  DARK_RED: '#E04545', DARK_GOLD_BRIGHT: '#C4A46C',
+}
+
+const DARK_VALUES: Partial<ThemeColors> = {
+  PAPER: '#131316', INK_BLACK: '#ECE8DC', IMPERIAL_RED: '#E05252',
+  AMBER_GOLD: '#C9A46B', DARK_GOLD: '#C9A46B', ACTIVE_CARD_BG: '#26262B',
+  WHITE: '#202024', WOOD: '#4C8A45', FIRE: '#D9543B', EARTH: '#A97845',
+  METAL: '#B4B4B4', WATER: '#5B82D8',
+  DARK_BG: '#131316', DARK_SURFACE: '#202024', DARK_CARD: '#26262B',
+  DARK_BORDER: '#3A3A3C', DARK_TEXT_PRIMARY: '#ECE8DC',
+  DARK_TEXT_SECONDARY: '#B0B0B0', DARK_TEXT_CAPTION: '#7A7A7A',
+  DARK_RED: '#E05252', DARK_GOLD_BRIGHT: '#C9A46B',
+}
+
+function applyPalette(target: ThemeColors, source: Partial<ThemeColors>): void {
+  const keys = Object.keys(source) as (keyof ThemeColors)[]
+  for (const k of keys) {
+    const v = source[k]
+    if (v !== undefined) {
+      // @ts-ignore  dynamic property assignment on @Observed class
+      target[k] = v
+    }
+  }
+}
+
 function refreshDerivedTokens(): void {
   INK.PRIMARY = COLORS.INK_BLACK
   INK.SECONDARY = COLORS.INK_BLACK + OP.LOW
@@ -221,11 +178,19 @@ function refreshDerivedTokens(): void {
   refreshElementColors()
 }
 
+export function applyTheme(dark: boolean): void {
+  darkModeActive = dark
+  applyPalette(COLORS, dark ? DARK_VALUES : LIGHT_VALUES)
+  refreshDerivedTokens()
+}
+
 // ============================================================
 // Heavenly Stems and Earthly Branches
 // ============================================================
 export const HEAVENLY_STEMS: string[] = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
 export const EARTHLY_BRANCHES: string[] = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+
+export const ZODIAC_NAMES: string[] = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪']
 
 export const STEM_ELEMENT: Map<string, string> = new Map([
   ['甲', '木'], ['乙', '木'],
@@ -366,14 +331,15 @@ export function getTrigramNature(binary: string): string {
 }
 
 // ============================================================
-// Theme support
+// Theme utility (explicit mode-switching for consumers that
+// need a snapshot of colors for a given mode without mutating state)
 // ============================================================
 export enum ThemeMode {
   LIGHT = 'light',
   DARK = 'dark'
 }
 
-export interface ThemeColors {
+export interface ThemeSnapshot {
   bg: string
   surface: string
   card: string
@@ -387,17 +353,22 @@ export interface ThemeColors {
   paper: string
 }
 
-export function themeColors(mode: ThemeMode): ThemeColors {
-  if (mode === ThemeMode.DARK) {
-    applyTheme(true)
-  } else {
-    applyTheme(false)
-  }
+export function themeColors(mode: ThemeMode): ThemeSnapshot {
+  const src = mode === ThemeMode.DARK ? DARK_VALUES : LIGHT_VALUES
   return {
-    bg: COLORS.PAPER, surface: COLORS.WHITE + '80', card: COLORS.WHITE + '80', border: COLORS.INK_BLACK + OP.FAINT,
-    textPrimary: COLORS.INK_BLACK, textSecondary: INK.BODY, textCaption: INK.CAPTION,
-    red: COLORS.IMPERIAL_RED, gold: COLORS.AMBER_GOLD, cardActive: COLORS.ACTIVE_CARD_BG, paper: COLORS.PAPER
+    bg: src.PAPER!,
+    surface: (src.WHITE ?? '#FFFFFF') + '80',
+    card: (src.WHITE ?? '#FFFFFF') + '80',
+    border: (src.INK_BLACK ?? '#1A1A1C') + OP.FAINT,
+    textPrimary: src.INK_BLACK ?? '#1A1A1C',
+    textSecondary: (src.INK_BLACK ?? '#1A1A1C') + '80',
+    textCaption: (src.INK_BLACK ?? '#1A1A1C') + OP.X_LOW,
+    red: src.IMPERIAL_RED ?? '#B91C1C',
+    gold: src.AMBER_GOLD ?? '#A67C52',
+    cardActive: src.ACTIVE_CARD_BG ?? '#FDFAF3',
+    paper: src.PAPER ?? '#F4EFDF',
   }
 }
 
+// Initialize derived tokens on module load
 refreshDerivedTokens()

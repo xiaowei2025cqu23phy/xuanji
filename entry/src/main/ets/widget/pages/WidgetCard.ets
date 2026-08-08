@@ -1,5 +1,5 @@
-import { formBindingData, FormExtensionAbility, formInfo } from '@kit.FormKit'
-import { Want } from '@kit.AbilityKit'
+import { HEAVENLY_STEMS, EARTHLY_BRANCHES, ZODIAC_NAMES } from '../../common/constants'
+import { GET_HEX_BY_BINARY } from '../../model/iching-data'
 
 // Daily hexagram widget card
 @Entry
@@ -7,7 +7,6 @@ import { Want } from '@kit.AbilityKit'
 struct WidgetCard {
   @State currentDate: string = ''
   @State dayStemBranch: string = ''
-  @State dayHexagram: string = ''
   @State dayHexSymbol: string = ''
   @State dayHexName: string = ''
   @State dayHexMeaning: string = ''
@@ -24,47 +23,23 @@ struct WidgetCard {
     const m = now.getMonth() + 1
     const d = now.getDate()
 
-    // Simple date display
     this.currentDate = y + '年' + m + '月' + d + '日'
-
-    const stems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
-    const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
-    const zodiacNames = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪']
 
     // Day stem-branch: continuous 60-day cycle from 1900-01-01 (甲戌日, index 10)
     const epoch = new Date(1900, 0, 1)
     const diffDays = Math.floor((now.getTime() - epoch.getTime()) / 86400000)
     const dayIdx = ((diffDays % 60) + 60 + 10) % 60
-    this.dayStemBranch = stems[dayIdx % 10] + branches[dayIdx % 12]
-    this.yearStemBranch = stems[((y - 4) % 10 + 10) % 10] + branches[((y - 4) % 12 + 12) % 12]
-    this.zodiac = zodiacNames[((y - 4) % 12 + 12) % 12]
+    this.dayStemBranch = HEAVENLY_STEMS[dayIdx % 10] + EARTHLY_BRANCHES[dayIdx % 12]
+    this.yearStemBranch = HEAVENLY_STEMS[((y - 4) % 10 + 10) % 10] +
+      EARTHLY_BRANCHES[((y - 4) % 12 + 12) % 12]
+    this.zodiac = ZODIAC_NAMES[((y - 4) % 12 + 12) % 12]
 
     // Daily hexagram: tied to the day sexagenary index
     const hexIdx = dayIdx % 64
     const bin = hexIdx.toString(2).padStart(6, '0')
-    this.dayHexagram = bin
-
-    // Popular hexagrams for display
-    const hexNames = [
-      '乾', '坤', '屯', '蒙', '需', '讼', '师', '比', '小畜', '履',
-      '泰', '否', '同人', '大有', '谦', '豫', '随', '蛊', '临', '观',
-      '噬嗑', '贲', '剥', '复', '无妄', '大畜', '颐', '大过', '坎', '离',
-      '咸', '恒', '遁', '大壮', '晋', '明夷', '家人', '睽', '蹇', '解',
-      '损', '益', '夬', '姤', '萃', '升', '困', '井', '革', '鼎',
-      '震', '艮', '渐', '归妹', '丰', '旅', '巽', '兑', '涣', '节',
-      '中孚', '小过', '既济', '未济'
-    ]
-    const hexSymbols = [
-      '䷀', '䷁', '䷂', '䷃', '䷄', '䷅', '䷆', '䷇', '䷈', '䷉',
-      '䷊', '䷋', '䷌', '䷍', '䷎', '䷏', '䷐', '䷑', '䷒', '䷓',
-      '䷔', '䷕', '䷖', '䷗', '䷘', '䷙', '䷚', '䷛', '䷜', '䷝',
-      '䷞', '䷟', '䷠', '䷡', '䷢', '䷣', '䷤', '䷥', '䷦', '䷧',
-      '䷨', '䷩', '䷪', '䷫', '䷬', '䷭', '䷮', '䷯', '䷰', '䷱',
-      '䷲', '䷳', '䷴', '䷵', '䷶', '䷷', '䷸', '䷹', '䷺', '䷻',
-      '䷼', '䷽', '䷾', '䷿'
-    ]
-    this.dayHexName = hexNames[hexIdx]
-    this.dayHexSymbol = hexSymbols[hexIdx]
+    const hex = GET_HEX_BY_BINARY(bin)
+    this.dayHexName = hex.name
+    this.dayHexSymbol = hex.symbol
     this.dayHexMeaning = '点击进入天道玄机查看详情'
   }
 

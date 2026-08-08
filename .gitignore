@@ -1,24 +1,31 @@
+# --- 依赖 ---
 /node_modules
 /oh_modules
+
+# --- 本地环境（不提交） ---
 /local.properties
+
+# --- IDE 配置 ---
 /.idea
-**/build
-/.hvigor
 .cxx
 /.clangd
 /.clang-format
 /.clang-tidy
+
+# --- 构建与工具缓存 ---
+**/build
+/.hvigor
 **/.test
 /.appanalyzer
-/.claude/
 
-# 旧 IDE 工程残留（嵌套目录）
+# --- 旧 IDE 工程残留（嵌套目录） ---
 /tian-dao-xuan-ji-harmony/
 
-# 预览缓存
+# --- 预览缓存 ---
 /entry/.preview/
 /entry/.test/
 
-# 构建产物
+# --- 构建产物 ---
 *.hap
 *.app
+*.hsp

@@ -1,6 +1,6 @@
 ﻿import {
   HEAVENLY_STEMS, EARTHLY_BRANCHES, STEM_ELEMENT, BRANCH_ELEMENT, BRANCH_HIDDEN_STEMS,
-  SEASONAL_STRENGTH, getElementRelation
+  SEASONAL_STRENGTH, getElementRelation, ZODIAC_NAMES
 } from '../common/constants'
 import {
   BaziData, PillarData, TEN_STEMS_ANALYSIS, MonthCommand, StructureInfo,
@@ -66,19 +66,25 @@ export function getDayStemBranch(date: Date): string {
   return HEAVENLY_STEMS[idx % 10] + EARTHLY_BRANCHES[idx % 12]
 }
 
+// ---- 节气月公共函数：根据儒略日 + 搜索年份确定月建（寅月=1 ... 丑月=12） ----
+function getSolarMonthByJD(jd: number, searchYear: number): number {
+  let monthNum = 1
+  for (let y = searchYear - 1; y <= searchYear + 1; y++) {
+    for (let j = 0; j < JIE_INDEXES.length; j++) {
+      if (jd >= solarTermJd(y, JIE_INDEXES[j])) {
+        monthNum = JIE_MONTHS[j]
+      }
+    }
+  }
+  return monthNum
+}
+
 // 节气月柱干支（以节为界：立春=寅月 ... 小寒=丑月）
 export function getMonthStemBranch(date: Date): string {
   const birthJd = dateToJD(date)
   const gy = getGanZhiYear(date)
   const yearSBIdx = getYearStemBranchIndex(gy)
-  let monthNum = 1
-  for (let y = gy; y <= gy + 1; y++) {
-    for (let j = 0; j < JIE_INDEXES.length; j++) {
-      if (birthJd >= solarTermJd(y, JIE_INDEXES[j])) {
-        monthNum = JIE_MONTHS[j]
-      }
-    }
-  }
+  const monthNum = getSolarMonthByJD(birthJd, gy)
   const sbIdx = getMonthStemBranchIndex(yearSBIdx % 10, monthNum)
   return HEAVENLY_STEMS[sbIdx % 10] + EARTHLY_BRANCHES[sbIdx % 12]
 }
@@ -197,7 +203,6 @@ function computeNayinData(yearStemIdx: number, yearBranchIdx: number,
 // ============================================================
 // 神煞 (Shensha) computation
 // ============================================================
-const ZODIAC_NAMES: string[] = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪']
 
 function pillarLabel(p: string): string {
   if (p === 'year') return '年柱'
@@ -359,15 +364,7 @@ export function getAlmanac(date: Date): AlmanacInfo {
   const dayBranchIdx = daySBIdx % 12
 
   // 节气月（月建）
-  const birthJd = dateToJD(date)
-  let monthNum = 1
-  for (let y = ganZhiYear; y <= ganZhiYear + 1; y++) {
-    for (let j = 0; j < JIE_INDEXES.length; j++) {
-      if (birthJd >= solarTermJd(y, JIE_INDEXES[j])) {
-        monthNum = JIE_MONTHS[j]
-      }
-    }
-  }
+  const monthNum = getSolarMonthByJD(dateToJD(date), ganZhiYear)
   const monthSBIdx = getMonthStemBranchIndex(yearSBIdx % 10, monthNum)
   const monthStemBranch = HEAVENLY_STEMS[monthSBIdx % 10] + EARTHLY_BRANCHES[monthSBIdx % 12]
   const monthBranchIdx = monthSBIdx % 12
@@ -707,14 +704,7 @@ export function calculateBazi(date: Date, gender: string, useLateZiHuanRi: boole
   const yearBranch = EARTHLY_BRANCHES[yearSBIdx % 12]
 
   // ---- 干支月：以节为界（立春=寅月 ... 小寒=丑月） ----
-  let monthNum = 1
-  for (let y = birthYear - 1; y <= birthYear; y++) {
-    for (let j = 0; j < JIE_INDEXES.length; j++) {
-      if (birthJd >= solarTermJd(y, JIE_INDEXES[j])) {
-        monthNum = JIE_MONTHS[j]
-      }
-    }
-  }
+  const monthNum = getSolarMonthByJD(birthJd, birthYear)
   const monthSBIdx = getMonthStemBranchIndex(yearSBIdx % 10, monthNum)
   const monthStem = HEAVENLY_STEMS[monthSBIdx % 10]
   const monthBranch = EARTHLY_BRANCHES[monthSBIdx % 12]
