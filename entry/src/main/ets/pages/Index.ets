@@ -60,8 +60,9 @@ struct Index {
         controller: this.settingsDialogController!,
         onSave: (config: AIConfig) => {
           this.aiConfig = config
-          saveAIConfig(config).catch(() => {
-            this.getUIContext().getPromptAction().showToast({ message: '配置保存失败' })
+          saveAIConfig(config).catch((err: Error) => {
+            const msg = err && err.message ? err.message : '配置保存失败'
+            this.getUIContext().getPromptAction().showToast({ message: '保存失败：' + msg })
           })
         }
       }),
