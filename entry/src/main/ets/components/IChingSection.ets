@@ -356,12 +356,15 @@ export struct IChingSection {
   }
 
   @Builder ManualLineButton(idx: number, value: number, label: string) {
-    const selected = idx < this.lines.length && this.lines[idx].value === value
     Button(label).fontSize(9).fontWeight(FontWeight.Bold)
-      .fontColor(selected ? COLORS.WHITE : (value >= 7 ? INK.SECONDARY : RED.LABEL))
-      .backgroundColor(selected ? (value >= 7 ? COLORS.INK_BLACK : COLORS.IMPERIAL_RED) : INK.BG_FAINT)
+      .fontColor(this.isManualLineSelected(idx, value) ? COLORS.WHITE : (value >= 7 ? INK.SECONDARY : RED.LABEL))
+      .backgroundColor(this.isManualLineSelected(idx, value) ? (value >= 7 ? COLORS.INK_BLACK : COLORS.IMPERIAL_RED) : INK.BG_FAINT)
       .borderRadius(8).padding({ left: 8, right: 8, top: 5, bottom: 5 })
       .onClick(() => { this.setManualLine(idx, value) })
+  }
+
+  isManualLineSelected(idx: number, value: number): boolean {
+    return idx < this.lines.length && this.lines[idx].value === value
   }
 
   @Builder LineDisplay() {

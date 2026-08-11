@@ -34,8 +34,13 @@ interface OpenAIResponse {
   choices: OpenAIChoice[]
 }
 
+interface GeminiContent {
+  role: string
+  parts: GeminiPart[]
+}
+
 interface GeminiCandidate {
-  content: { role: string; parts: GeminiPart[] }
+  content: GeminiContent
   finishReason?: string
   safetyRatings?: Object[]
 }

@@ -3,8 +3,6 @@
 // ============================================================
 // Theme tokens are @Observed class instances so ArkUI components
 // can use @ObjectLink for deep reactivity on color changes.
-// The singleton exports (COLORS, INK, RED) maintain the legacy
-// static-import API while being compatible with ArkUI state management.
 // ============================================================
 
 // --- Common opacity token shortcuts (hex suffix) ---
@@ -40,13 +38,6 @@ export const OP: OpColors = {
 // @Observed theme token classes
 // ============================================================
 
-function hexAlpha(hex: string, opacity: number): string {
-  const clamped = Math.max(0, Math.min(1, opacity))
-  const byte = Math.round(clamped * 255)
-  const suffix = byte.toString(16).toUpperCase().padStart(2, '0')
-  return hex + suffix
-}
-
 @Observed
 export class ThemeColors {
   PAPER: string = '#F4EFDF'
@@ -61,7 +52,6 @@ export class ThemeColors {
   EARTH: string = '#7C512D'
   METAL: string = '#8A8A8A'
   WATER: string = '#1E3A8A'
-  // Dark mode palette (kept for reference / fallback)
   DARK_BG: string = '#1A1A1C'
   DARK_SURFACE: string = '#252528'
   DARK_CARD: string = '#2C2C30'
@@ -73,7 +63,10 @@ export class ThemeColors {
   DARK_GOLD_BRIGHT: string = '#C4A46C'
 
   alpha(hex: string, opacity: number): string {
-    return hexAlpha(hex, opacity)
+    const clamped = Math.max(0, Math.min(1, opacity))
+    const byte = Math.round(clamped * 255)
+    const suffix = byte.toString(16).toUpperCase().padStart(2, '0')
+    return hex + suffix
   }
 }
 
@@ -103,9 +96,6 @@ export class RedTokens {
   LABEL: string = '#000000'
 }
 
-// Singleton exports — components import these for static access.
-// They are @Observed class instances, so @State / @ObjectLink
-// usage in components gets proper deep reactivity.
 export const COLORS = new ThemeColors()
 export const INK = new InkTokens()
 export const RED = new RedTokens()
@@ -118,40 +108,6 @@ let darkModeActive: boolean = false
 
 export function isDarkMode(): boolean {
   return darkModeActive
-}
-
-// Light / dark palette presets
-const LIGHT_VALUES: Partial<ThemeColors> = {
-  PAPER: '#F4EFDF', INK_BLACK: '#1A1A1C', IMPERIAL_RED: '#B91C1C',
-  AMBER_GOLD: '#A67C52', DARK_GOLD: '#5D4A2A', ACTIVE_CARD_BG: '#FDFAF3',
-  WHITE: '#FFFFFF', WOOD: '#2D5A27', FIRE: '#C23B22', EARTH: '#7C512D',
-  METAL: '#8A8A8A', WATER: '#1E3A8A',
-  DARK_BG: '#1A1A1C', DARK_SURFACE: '#252528', DARK_CARD: '#2C2C30',
-  DARK_BORDER: '#3A3A3C', DARK_TEXT_PRIMARY: '#E8E8E1',
-  DARK_TEXT_SECONDARY: '#A0A0A0', DARK_TEXT_CAPTION: '#6E6E6E',
-  DARK_RED: '#E04545', DARK_GOLD_BRIGHT: '#C4A46C',
-}
-
-const DARK_VALUES: Partial<ThemeColors> = {
-  PAPER: '#131316', INK_BLACK: '#ECE8DC', IMPERIAL_RED: '#E05252',
-  AMBER_GOLD: '#C9A46B', DARK_GOLD: '#C9A46B', ACTIVE_CARD_BG: '#26262B',
-  WHITE: '#202024', WOOD: '#4C8A45', FIRE: '#D9543B', EARTH: '#A97845',
-  METAL: '#B4B4B4', WATER: '#5B82D8',
-  DARK_BG: '#131316', DARK_SURFACE: '#202024', DARK_CARD: '#26262B',
-  DARK_BORDER: '#3A3A3C', DARK_TEXT_PRIMARY: '#ECE8DC',
-  DARK_TEXT_SECONDARY: '#B0B0B0', DARK_TEXT_CAPTION: '#7A7A7A',
-  DARK_RED: '#E05252', DARK_GOLD_BRIGHT: '#C9A46B',
-}
-
-function applyPalette(target: ThemeColors, source: Partial<ThemeColors>): void {
-  const keys = Object.keys(source) as (keyof ThemeColors)[]
-  for (const k of keys) {
-    const v = source[k]
-    if (v !== undefined) {
-      // @ts-ignore  dynamic property assignment on @Observed class
-      target[k] = v
-    }
-  }
 }
 
 function refreshDerivedTokens(): void {
@@ -180,7 +136,25 @@ function refreshDerivedTokens(): void {
 
 export function applyTheme(dark: boolean): void {
   darkModeActive = dark
-  applyPalette(COLORS, dark ? DARK_VALUES : LIGHT_VALUES)
+  if (dark) {
+    COLORS.PAPER = '#131316'; COLORS.INK_BLACK = '#ECE8DC'; COLORS.IMPERIAL_RED = '#E05252'
+    COLORS.AMBER_GOLD = '#C9A46B'; COLORS.DARK_GOLD = '#C9A46B'; COLORS.ACTIVE_CARD_BG = '#26262B'
+    COLORS.WHITE = '#202024'; COLORS.WOOD = '#4C8A45'; COLORS.FIRE = '#D9543B'; COLORS.EARTH = '#A97845'
+    COLORS.METAL = '#B4B4B4'; COLORS.WATER = '#5B82D8'
+    COLORS.DARK_BG = '#131316'; COLORS.DARK_SURFACE = '#202024'; COLORS.DARK_CARD = '#26262B'
+    COLORS.DARK_BORDER = '#3A3A3C'; COLORS.DARK_TEXT_PRIMARY = '#ECE8DC'
+    COLORS.DARK_TEXT_SECONDARY = '#B0B0B0'; COLORS.DARK_TEXT_CAPTION = '#7A7A7A'
+    COLORS.DARK_RED = '#E05252'; COLORS.DARK_GOLD_BRIGHT = '#C9A46B'
+  } else {
+    COLORS.PAPER = '#F4EFDF'; COLORS.INK_BLACK = '#1A1A1C'; COLORS.IMPERIAL_RED = '#B91C1C'
+    COLORS.AMBER_GOLD = '#A67C52'; COLORS.DARK_GOLD = '#5D4A2A'; COLORS.ACTIVE_CARD_BG = '#FDFAF3'
+    COLORS.WHITE = '#FFFFFF'; COLORS.WOOD = '#2D5A27'; COLORS.FIRE = '#C23B22'; COLORS.EARTH = '#7C512D'
+    COLORS.METAL = '#8A8A8A'; COLORS.WATER = '#1E3A8A'
+    COLORS.DARK_BG = '#1A1A1C'; COLORS.DARK_SURFACE = '#252528'; COLORS.DARK_CARD = '#2C2C30'
+    COLORS.DARK_BORDER = '#3A3A3C'; COLORS.DARK_TEXT_PRIMARY = '#E8E8E1'
+    COLORS.DARK_TEXT_SECONDARY = '#A0A0A0'; COLORS.DARK_TEXT_CAPTION = '#6E6E6E'
+    COLORS.DARK_RED = '#E04545'; COLORS.DARK_GOLD_BRIGHT = '#C4A46C'
+  }
   refreshDerivedTokens()
 }
 
@@ -208,7 +182,6 @@ export const BRANCH_ELEMENT: Map<string, string> = new Map([
   ['亥', '水'], ['子', '水'],
 ])
 
-// 地支藏干 (hidden stems inside each earthly branch)
 export const BRANCH_HIDDEN_STEMS: Map<string, string[]> = new Map([
   ['子', ['癸']],
   ['丑', ['己', '癸', '辛']],
@@ -237,7 +210,6 @@ function refreshElementColors(): void {
 
 export const ELEMENT_ORDER: string[] = ['木', '火', '土', '金', '水']
 
-// Build seasonal strength maps (旺相休囚死) for each branch
 function makeSeasonal(wang: string, xiang: string): Map<string, string> {
   let xiu = '', qiu = '', si = ''
   if (wang === '木') { xiu = '水'; qiu = '金'; si = '土' }
@@ -262,7 +234,6 @@ export const SEASONAL_STRENGTH: Map<string, Map<string, string>> = (() => {
   return m
 })()
 
-// Five-element cycles
 export const GENERATIVE_CYCLE: Map<string, string> = new Map([
   ['木', '火'], ['火', '土'], ['土', '金'], ['金', '水'], ['水', '木'],
 ])
@@ -272,7 +243,7 @@ export const OVERCOMING_CYCLE: Map<string, string> = new Map([
 ])
 
 // ============================================================
-// Five-element relation engine (shared by Ba Zi & I Ching)
+// Five-element relation engine
 // ============================================================
 export interface ElementRelation {
   label: string
@@ -280,8 +251,6 @@ export interface ElementRelation {
   desc: string
 }
 
-// Ordered by element cycle: how 'self' relates to 'other'
-// q(我) is self element, p(彼) is other element
 export function getElementRelation(qSelf: string, pOther: string): ElementRelation {
   if (qSelf === pOther) return { label: '比和', relative: '兄弟', desc: '同气相求，协力齐心。' }
   if (GENERATIVE_CYCLE.get(pOther) === qSelf) return { label: '我生', relative: '子孙', desc: '我生者泄，当下虽有损耗，长远有利。' }
@@ -331,8 +300,7 @@ export function getTrigramNature(binary: string): string {
 }
 
 // ============================================================
-// Theme utility (explicit mode-switching for consumers that
-// need a snapshot of colors for a given mode without mutating state)
+// Theme utility — create a snapshot for specific consumers
 // ============================================================
 export enum ThemeMode {
   LIGHT = 'light',
@@ -354,21 +322,19 @@ export interface ThemeSnapshot {
 }
 
 export function themeColors(mode: ThemeMode): ThemeSnapshot {
-  const src = mode === ThemeMode.DARK ? DARK_VALUES : LIGHT_VALUES
+  const isPK: boolean = mode === ThemeMode.DARK
+  const ink: string = isPK ? '#ECE8DC' : '#1A1A1C'
+  const paper: string = isPK ? '#131316' : '#F4EFDF'
+  const white: string = isPK ? '#202024' : '#FFFFFF'
+  const red: string = isPK ? '#E05252' : '#B91C1C'
+  const gold: string = isPK ? '#C9A46B' : '#A67C52'
+  const cardActive: string = isPK ? '#26262B' : '#FDFAF3'
   return {
-    bg: src.PAPER!,
-    surface: (src.WHITE ?? '#FFFFFF') + '80',
-    card: (src.WHITE ?? '#FFFFFF') + '80',
-    border: (src.INK_BLACK ?? '#1A1A1C') + OP.FAINT,
-    textPrimary: src.INK_BLACK ?? '#1A1A1C',
-    textSecondary: (src.INK_BLACK ?? '#1A1A1C') + '80',
-    textCaption: (src.INK_BLACK ?? '#1A1A1C') + OP.X_LOW,
-    red: src.IMPERIAL_RED ?? '#B91C1C',
-    gold: src.AMBER_GOLD ?? '#A67C52',
-    cardActive: src.ACTIVE_CARD_BG ?? '#FDFAF3',
-    paper: src.PAPER ?? '#F4EFDF',
+    bg: paper, surface: white + '80', card: white + '80',
+    border: ink + OP.FAINT, textPrimary: ink, textSecondary: ink + '80',
+    textCaption: ink + OP.X_LOW, red: red, gold: gold,
+    cardActive: cardActive, paper: paper
   }
 }
 
-// Initialize derived tokens on module load
 refreshDerivedTokens()

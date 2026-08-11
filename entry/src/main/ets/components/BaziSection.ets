@@ -349,21 +349,21 @@ export struct BaziSection {
   // ================================================================
   @Builder SubTabBar() {
     Row({ space: 6 }) {
-      ForEach([
-        { id: 'pillars', label: '五行格局', icon: '⚖' },
-        { id: 'nayin',   label: '纳音',     icon: '🎵' },
-        { id: 'shensha', label: '神煞',     icon: '⭐' },
-        { id: 'dayun',   label: '大运',     icon: '🔄' },
-        { id: 'liunian', label: '流年',     icon: '📅' },
-      ] as { id: string; label: string; icon: string }[], (tab: { id: string; label: string; icon: string }) => {
-        Button(tab.icon + ' ' + tab.label)
-          .fontSize(10).fontWeight(FontWeight.Bold)
-          .fontColor(this.activeSubTab === tab.id ? COLORS.WHITE : INK.SECONDARY)
-          .backgroundColor(this.activeSubTab === tab.id ? COLORS.INK_BLACK : INK.BG_FAINT)
-          .borderRadius(12).padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .onClick(() => { this.activeSubTab = tab.id })
-      })
+      this.SubTabButton('pillars', '⚖ 五行格局')
+      this.SubTabButton('nayin', '🎵 纳音')
+      this.SubTabButton('shensha', '⭐ 神煞')
+      this.SubTabButton('dayun', '🔄 大运')
+      this.SubTabButton('liunian', '📅 流年')
     }.width('100%')
+  }
+
+  @Builder SubTabButton(tabId: string, label: string) {
+    Button(label)
+      .fontSize(10).fontWeight(FontWeight.Bold)
+      .fontColor(this.activeSubTab === tabId ? COLORS.WHITE : INK.SECONDARY)
+      .backgroundColor(this.activeSubTab === tabId ? COLORS.INK_BLACK : INK.BG_FAINT)
+      .borderRadius(12).padding({ left: 12, right: 12, top: 8, bottom: 8 })
+      .onClick(() => { this.activeSubTab = tabId })
   }
 
   // ================================================================
@@ -508,7 +508,7 @@ export struct BaziSection {
           }
         }
         .columnsTemplate('1fr 1fr').rowsTemplate('1fr 1fr').width('100%')
-        .columnGap(8).rowGap(8)
+        .columnsGap(8).rowsGap(8)
 
         Text('纳音将六十甲子配以五音十二律，以干支象数推演五行音律。')
           .fontSize(10).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
@@ -691,7 +691,7 @@ export struct BaziSection {
           })
         }
         .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr').width('100%')
-        .columnGap(4).rowGap(4)
+        .columnsGap(4).rowsGap(4)
       }
       .width('100%').padding(18)
       .backgroundColor(COLORS.ACTIVE_CARD_BG)
