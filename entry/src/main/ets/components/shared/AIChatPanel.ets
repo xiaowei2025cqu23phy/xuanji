@@ -12,90 +12,88 @@ export struct AIChatPanel {
   @State followUp: string = ''
 
   build() {
-    Column({ space: 16 }) {
-      Divider().color(COLORS.INK_BLACK + OP.X_FAINT)
+    Column({ space: 14 }) {
+      Divider().color(INK.HAIRLINE)
 
+      // Header
       Row({ space: 8 }) {
-        Text('AI 大师解析')
-          .fontSize(12)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(INK.CAPTION)
+        Text('🤖 AI 大师解析')
+          .fontSize(13).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
         Blank().layoutWeight(1)
         if (this.chatHistory.length > 0) {
-          Button('清空')
-            .fontSize(8).fontColor(INK.PLACEHOLDER).backgroundColor(INK.BG_FAINT)
-            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+          Button('🗑 清空').fontSize(9).fontColor(INK.PLACEHOLDER)
+            .backgroundColor(INK.BG_FAINT).borderRadius(10)
+            .padding({ left: 10, right: 10, top: 5, bottom: 5 })
             .onClick(() => { this.onClear() })
         }
       }.width('100%')
 
       // Category selector
-      Row({ space: 4 }) {
-        ForEach(QUESTION_CATEGORIES, (cat: CategoryInfo) => {
-          Text(cat.icon + ' ' + cat.label)
-            .fontSize(9)
-            .fontColor(this.activeCategory === cat.id ? COLORS.WHITE : INK.SECONDARY)
-            .backgroundColor(this.activeCategory === cat.id ? COLORS.IMPERIAL_RED : INK.BG_FAINT)
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-            .borderRadius(12)
-            .onClick(() => { this.onCategoryChange(cat.id) })
-        }, (cat: CategoryInfo) => cat.id)
+      Scroll() {
+        Row({ space: 6 }) {
+          ForEach(QUESTION_CATEGORIES, (cat: CategoryInfo) => {
+            Text(cat.icon + ' ' + cat.label.split(' ')[0])
+              .fontSize(10).fontWeight(FontWeight.Bold)
+              .fontColor(this.activeCategory === cat.id ? COLORS.WHITE : INK.SECONDARY)
+              .backgroundColor(this.activeCategory === cat.id ? COLORS.IMPERIAL_RED : INK.BG_FAINT)
+              .borderRadius(12).padding({ left: 12, right: 12, top: 7, bottom: 7 })
+              .onClick(() => { this.onCategoryChange(cat.id) })
+          })
+        }
       }
-      .width('100%')
+      .scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off)
 
-      // Chat history
+      // Chat messages area
       if (this.chatHistory.length > 0) {
         Scroll() {
-          Column({ space: 12 }) {
+          Column({ space: 10 }) {
             ForEach(this.chatHistory, (msg: ChatMessage, idx: number) => {
-              Row() {
-                Text(msg.content)
-                  .fontSize(11)
-                  .fontColor(INK.BODY)
-                  .padding(12)
-                  .backgroundColor(msg.role === 'user' ? INK.BG_LIGHT : RED.BG_MEDIUM)
-                  .borderRadius(12)
-                  .constraintSize({ maxWidth: '80%' })
+              Column() {
+                Row() {
+                  Text(msg.role === 'user' ? '🧑' : '🧘')
+                    .fontSize(14).width(28)
+                  Text(msg.content)
+                    .fontSize(12).lineHeight(19)
+                    .padding(14)
+                    .backgroundColor(msg.role === 'user' ?
+                      INK.BG_FAINT : COLORS.ACTIVE_CARD_BG)
+                    .borderRadius({ topLeft: msg.role === 'user' ? 16 : 4, topRight: 16, bottomLeft: 16, bottomRight: 16 })
+                    .constraintSize({ maxWidth: '78%' })
+                }
+                .width('100%')
+                .justifyContent(msg.role === 'user' ? FlexAlign.End : FlexAlign.Start)
               }
-              .width('100%')
-              .justifyContent(msg.role === 'user' ? FlexAlign.End : FlexAlign.Start)
-            }, (_msg: ChatMessage, idx: number) => idx.toString())
+            })
             if (this.aiLoading) {
               Row({ space: 8 }) {
-                LoadingProgress().width(14).height(14).color(COLORS.IMPERIAL_RED)
-                Text('天道先生思考中...').fontSize(10).fontColor(INK.PLACEHOLDER)
-              }
-              .width('100%').justifyContent(FlexAlign.Start).padding({ left: 4 })
+                LoadingProgress().width(16).height(16).color(COLORS.IMPERIAL_RED)
+                Text('天道先生思考中...').fontSize(11).fontColor(INK.PLACEHOLDER)
+              }.width('100%').justifyContent(FlexAlign.Start).padding({ left: 36, top: 4 })
             }
-          }
-          .width('100%')
+          }.width('100%')
         }
-        .height(200)
+        .height(280)
+        .scrollable(ScrollDirection.Vertical).scrollBar(BarState.Auto)
       } else if (this.aiLoading) {
-        Row({ space: 8 }) {
-          LoadingProgress().width(14).height(14).color(COLORS.IMPERIAL_RED)
-          Text('天道先生思考中...').fontSize(10).fontColor(INK.PLACEHOLDER)
-        }.width('100%').justifyContent(FlexAlign.Center).padding(16)
+        Row({ space: 10 }) {
+          LoadingProgress().width(18).height(18).color(COLORS.IMPERIAL_RED)
+          Text('天道先生思考中...').fontSize(12).fontColor(INK.PLACEHOLDER)
+        }.width('100%').justifyContent(FlexAlign.Center).padding(20)
       }
 
       // Input area
       Row({ space: 8 }) {
-        TextInput({ placeholder: '输入追问...', text: this.followUp })
+        TextInput({ placeholder: '💬 输入追问...', text: this.followUp })
           .onChange((value: string) => { this.followUp = value })
           .layoutWeight(1)
-          .fontSize(11)
-          .padding(10)
-          .backgroundColor(INK.BG_FAINT)
-          .border({ width: 1, color: INK.HAIRLINE })
-          .borderRadius(12)
+          .fontSize(12).padding({ left: 14, right: 14, top: 11, bottom: 11 })
+          .backgroundColor(COLORS.WHITE + '66')
+          .border({ width: 1.5, color: INK.FAINT }).borderRadius(14)
 
-        Button('发送')
-          .fontSize(11)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(COLORS.WHITE)
-          .backgroundColor(COLORS.IMPERIAL_RED)
-          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
-          .borderRadius(12)
+        Button('发送').fontSize(12).fontWeight(FontWeight.Bold)
+          .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED)
+          .borderRadius(14).padding({ left: 20, right: 20, top: 11, bottom: 11 })
+          .shadow({ radius: 6, color: COLORS.IMPERIAL_RED + '25', offsetY: 2 })
           .enabled(!this.aiLoading)
           .onClick(() => {
             const text = this.followUp.trim()
@@ -104,9 +102,7 @@ export struct AIChatPanel {
               this.followUp = ''
             }
           })
-      }
-      .width('100%')
-    }
-    .width('100%')
+      }.width('100%')
+    }.width('100%')
   }
 }

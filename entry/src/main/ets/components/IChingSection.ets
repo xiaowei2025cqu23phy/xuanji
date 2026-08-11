@@ -40,9 +40,7 @@ interface DivinationResult {
 // Pre-build all 64 hexagrams for search (lazy-initialized on first search)
 let allHexagramsCache: Hexagram[] | null = null
 function getAllHexagrams(): Hexagram[] {
-  if (allHexagramsCache !== null) {
-    return allHexagramsCache
-  }
+  if (allHexagramsCache !== null) return allHexagramsCache
   const hexagrams: Hexagram[] = []
   for (let i = 0; i < 64; i++) {
     const bin = i.toString(2).padStart(6, '0')
@@ -52,7 +50,6 @@ function getAllHexagrams(): Hexagram[] {
   return hexagrams
 }
 
-// Trigram lookup (3-bit binary → name/nature/element)
 interface TrigramBrief { name: string; nature: string; element: string }
 const TRIGRAM_MAP: Map<string, TrigramBrief> = ((): Map<string, TrigramBrief> => {
   const m: Map<string, TrigramBrief> = new Map()
@@ -63,9 +60,7 @@ const TRIGRAM_MAP: Map<string, TrigramBrief> = ((): Map<string, TrigramBrief> =>
   return m
 })()
 function getTrigramFromBin(bin: string): TrigramBrief {
-  const result: TrigramBrief | undefined = TRIGRAM_MAP.get(bin)
-  if (result !== undefined) { return result }
-  return { name: '?', nature: '?', element: '?' }
+  return TRIGRAM_MAP.get(bin) ?? { name: '?', nature: '?', element: '?' }
 }
 
 // ---- Mini hexagram display ----
@@ -80,7 +75,7 @@ struct MiniHexagram {
           Row().height(2).backgroundColor(this.color).opacity(0.8).layoutWeight(1)
           if (bit === '0') { Row().height(2).backgroundColor(this.color).opacity(0.8).layoutWeight(1) }
         }.width('100%')
-      }, (_bit: string, idx: number) => idx.toString())
+      })
     }.width(24)
   }
 }
@@ -107,8 +102,7 @@ export struct IChingSection {
   @State showRecords: boolean = false
   @State offlineReport: string = ''
   @State showOffline: boolean = false
-  @State liuyaoPan: LiuYaoPan | null = null  // 六爻排盘
-  // Search state
+  @State liuyaoPan: LiuYaoPan | null = null
   @State searchQuery: string = ''
   @State searchResults: Hexagram[] = []
   @State showSearch: boolean = false
@@ -118,41 +112,28 @@ export struct IChingSection {
   }
 
   build() {
-    Column({ space: 24 }) {
-      // Hexagram search bar (always visible)
+    Column({ space: 22 }) {
+      // Search bar
       this.SearchBar()
 
-      // Method selector
-      Row({ space: 4 }) {
-        Button('硬币起卦').fontSize(10).fontWeight(FontWeight.Bold)
-          .fontColor(this.method === 'coin' ? COLORS.WHITE : INK.SECONDARY)
-          .backgroundColor(this.method === 'coin' ? COLORS.IMPERIAL_RED : INK.BG_FAINT)
-          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .onClick(() => { this.method = 'coin'; this.resetDivination() })
-        Button('数字起卦').fontSize(10).fontWeight(FontWeight.Bold)
-          .fontColor(this.method === 'number' ? COLORS.WHITE : INK.SECONDARY)
-          .backgroundColor(this.method === 'number' ? COLORS.IMPERIAL_RED : INK.BG_FAINT)
-          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .onClick(() => { this.method = 'number'; this.resetDivination() })
-        Button('时间起卦').fontSize(10).fontWeight(FontWeight.Bold)
-          .fontColor(this.method === 'time' ? COLORS.WHITE : INK.SECONDARY)
-          .backgroundColor(this.method === 'time' ? COLORS.IMPERIAL_RED : INK.BG_FAINT)
-          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .onClick(() => { this.method = 'time'; this.resetDivination() })
-        Button('手动排卦').fontSize(10).fontWeight(FontWeight.Bold)
-          .fontColor(this.method === 'manual' ? COLORS.WHITE : INK.SECONDARY)
-          .backgroundColor(this.method === 'manual' ? COLORS.IMPERIAL_RED : INK.BG_FAINT)
-          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-          .onClick(() => { this.method = 'manual'; this.resetDivination() })
-      }.width('100%').justifyContent(FlexAlign.Center)
+      // Method tabs — nicer pill selector
+      Column({ space: 6 }) {
+        Text('起卦方式').fontSize(10).fontColor(INK.LABEL).fontWeight(FontWeight.Bold)
+        Row({ space: 6 }) {
+          this.MethodButton('coin', '🪙', '硬币')
+          this.MethodButton('number', '🔢', '数字')
+          this.MethodButton('time', '🕐', '时间')
+          this.MethodButton('manual', '✋', '手动')
+        }.width('100%').justifyContent(FlexAlign.SpaceBetween)
+      }
 
-      // Persistent records
+      // Records toggle
       Row({ space: 8 }) {
-        Text('我的记录').fontSize(10).fontColor(INK.CAPTION).fontWeight(FontWeight.Bold)
+        Text('📋 我的记录').fontSize(10).fontColor(INK.CAPTION).fontWeight(FontWeight.Bold)
         Blank().layoutWeight(1)
-        Button(this.showRecords ? '收起' : '展开 (' + this.records.length + ')')
+        Button(this.showRecords ? '收起 ▲' : `展开 (${this.records.length})`)
           .fontSize(9).fontColor(COLORS.IMPERIAL_RED).backgroundColor(RED.BG_MEDIUM)
-          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .borderRadius(10).padding({ left: 10, right: 10, top: 5, bottom: 5 })
           .onClick(() => { this.showRecords = !this.showRecords })
       }.width('100%')
       if (this.showRecords) { this.RecordsPanel() }
@@ -163,21 +144,27 @@ export struct IChingSection {
       // Loading / Error
       if (this.loading) {
         Row({ space: 12 }) {
-          LoadingProgress().width(20).height(20).color(COLORS.IMPERIAL_RED)
+          LoadingProgress().width(22).height(22).color(COLORS.IMPERIAL_RED)
           Text('起卦中...').fontSize(12).fontColor(INK.SECONDARY)
         }.width('100%').justifyContent(FlexAlign.Center).padding(24)
       }
       if (this.error.length > 0) {
         Text(this.error).fontSize(12).fontColor(COLORS.IMPERIAL_RED)
-          .padding(12).backgroundColor(RED.BG_FAINT).width('100%')
+          .padding(14).backgroundColor(RED.BG_FAINT).borderRadius(12).width('100%')
       }
 
       // Results
       if (this.result) { this.ResultContent() }
+    }.width('100%')
+  }
 
-      // History
-      if (this.history.length > 0) { this.HistoryContent() }
-    }.width('100%').backgroundColor(this.isDark ? COLORS.PAPER : COLORS.PAPER)
+  @Builder MethodButton(methodId: string, icon: string, label: string) {
+    Button(icon + ' ' + label)
+      .fontSize(11).fontWeight(FontWeight.Bold)
+      .fontColor(this.method === methodId ? COLORS.WHITE : INK.SECONDARY)
+      .backgroundColor(this.method === methodId ? COLORS.INK_BLACK : INK.BG_FAINT)
+      .borderRadius(12).padding({ left: 16, right: 16, top: 9, bottom: 9 })
+      .onClick(() => { this.method = methodId; this.resetDivination() })
   }
 
   resetDivination(): void {
@@ -192,41 +179,42 @@ export struct IChingSection {
   @Builder SearchBar() {
     Column({ space: 8 }) {
       Row({ space: 8 }) {
-        TextInput({ placeholder: '搜索卦名、拼音、卦辞...', text: this.searchQuery })
+        TextInput({ placeholder: '🔍 搜索卦名、拼音、卦辞...', text: this.searchQuery })
           .onChange((v: string) => {
             this.searchQuery = v
             this.onSearch(v)
           })
-          .layoutWeight(1).fontSize(11).padding(8)
-          .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE })
+          .layoutWeight(1).fontSize(12).padding({ left: 14, right: 14, top: 10, bottom: 10 })
+          .backgroundColor(INK.BG_FAINT).border({ width: 1.5, color: INK.FAINT }).borderRadius(14)
         if (this.searchQuery.length > 0) {
-          Button('✕').fontSize(12).width(28).height(28)
-            .fontColor(INK.SECONDARY).backgroundColor(INK.BG_FAINT)
+          Button('✕').fontSize(13).width(32).height(32)
+            .fontColor(INK.SECONDARY).backgroundColor(INK.BG_FAINT).borderRadius(16)
             .onClick(() => { this.searchQuery = ''; this.searchResults = []; this.showSearch = false })
         }
       }.width('100%')
       if (this.showSearch && this.searchResults.length > 0) {
-        Column({ space: 2 }) {
+        Column({ space: 4 }) {
           ForEach(this.searchResults.slice(0, 8), (hex: Hexagram) => {
             Row({ space: 12 }) {
-              Text(hex.symbol).fontSize(20).fontColor(COLORS.IMPERIAL_RED)
+              Text(hex.symbol).fontSize(24).fontColor(COLORS.IMPERIAL_RED)
               Column({ space: 2 }) {
-                Text(hex.name).fontSize(13).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+                Text(hex.name).fontSize(14).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
                 Text(hex.pinyin + ' · 第' + hex.number + '卦').fontSize(9).fontColor(INK.PLACEHOLDER)
-                Text(hex.judgement).fontSize(9).fontColor(INK.SECONDARY).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(hex.judgement).fontSize(9).fontColor(INK.SECONDARY)
+                  .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
               }.alignItems(HorizontalAlign.Start).layoutWeight(1)
             }
-            .width('100%').padding(8)
-            .backgroundColor(COLORS.WHITE).border({ width: 1, color: INK.HAIRLINE })
+            .width('100%').padding(10)
+            .backgroundColor(COLORS.WHITE).border({ width: 1, color: INK.HAIRLINE }).borderRadius(10)
             .onClick(() => {
-              // Show this hexagram as a result
               this.showHexagramDetail(hex)
               this.searchQuery = ''; this.searchResults = []; this.showSearch = false
             })
-          }, (hex: Hexagram) => hex.binary)
+          })
         }
         .width('100%').constraintSize({ maxHeight: 320 })
-        .border({ width: 1, color: INK.FAINT })
+        .border({ width: 1.5, color: INK.FAINT }).borderRadius(14)
+        .padding(4)
       }
     }.width('100%')
   }
@@ -242,8 +230,7 @@ export struct IChingSection {
   }
 
   showHexagramDetail(hex: Hexagram): void {
-    // Build a synthetic divination result to display the searched hexagram
-    this.method = '' // clear method
+    this.method = ''
     this.lines = []
     this.applyResult(this.buildResultFromBinary(hex.binary, []), false)
   }
@@ -251,154 +238,195 @@ export struct IChingSection {
   // ========== Method inputs ==========
 
   @Builder InputForMethod() {
-    if (this.method === 'coin') { this.CoinInput() }
+    if (this.method === 'coin')   { this.CoinInput() }
     if (this.method === 'number') { this.NumberInput() }
-    if (this.method === 'time') { this.TimeInput() }
+    if (this.method === 'time')   { this.TimeInput() }
     if (this.method === 'manual') { this.ManualInput() }
   }
 
   @Builder CoinInput() {
-    Column({ space: 16 }) {
-      Text('模拟三钱法起卦，请连续掷出6爻').fontSize(10).fontColor(INK.PLACEHOLDER)
+    Column({ space: 14 }) {
+      Text('🪙 模拟三钱法起卦，请连续掷出 6 爻')
+        .fontSize(11).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
       if (this.lines.length < 6) {
-        Text('第 ' + (this.lines.length + 1) + ' 爻 (从下往上)').fontSize(12).fontColor(INK.BODY).fontWeight(FontWeight.Bold)
-        Button('掷钱起卦').onClick(() => { this.castCoin() })
+        Text('第 ' + (this.lines.length + 1) + ' 爻（从下往上）')
+          .fontSize(13).fontColor(INK.BODY).fontWeight(FontWeight.Bold)
+        Button('🎲 掷钱起卦')
+          .fontSize(13).fontWeight(FontWeight.Bold)
+          .fontColor(COLORS.IMPERIAL_RED).backgroundColor(COLORS.WHITE)
+          .border({ width: 1.5, color: RED.BORDER }).borderRadius(14)
+          .padding({ left: 24, right: 24, top: 12, bottom: 12 })
+          .onClick(() => { this.castCoin() })
       }
       this.LineDisplay()
       if (this.lines.length === 6 && !this.result) {
-        Button('完成起卦 · 解卦').fontSize(13).fontWeight(FontWeight.Bold)
-          .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK)
+        Button('🔮 完成起卦 · 解卦')
+          .fontSize(14).fontWeight(FontWeight.Bold)
+          .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK).borderRadius(14)
+          .padding({ top: 13, bottom: 13 }).width('100%')
+          .shadow({ radius: 8, color: COLORS.INK_BLACK + '20', offsetY: 3 })
           .onClick(() => { this.calculateResult() })
       }
       if (this.lines.length > 0) {
-        Button('重新起卦').fontSize(10).fontColor(INK.SECONDARY).onClick(() => { this.resetDivination() })
+        Button('🔄 重新起卦').fontSize(10).fontColor(INK.SECONDARY)
+          .onClick(() => { this.resetDivination() })
       }
     }
     .width('100%').padding(20)
-    .backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+    .backgroundColor(COLORS.WHITE + '80')
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(18)
+    .shadow({ radius: 6, color: COLORS.INK_BLACK + '08', offsetY: 2 })
   }
 
   @Builder NumberInput() {
-    Column({ space: 16 }) {
-      Text('输入3个数字，系统将据此推演卦象').fontSize(10).fontColor(INK.PLACEHOLDER)
-      Row({ space: 12 }) {
-        TextInput({ placeholder: '数字1', text: this.number1 }).onChange((v: string) => { this.number1 = v }).type(InputType.Number).width(80)
-        TextInput({ placeholder: '数字2', text: this.number2 }).onChange((v: string) => { this.number2 = v }).type(InputType.Number).width(80)
-        TextInput({ placeholder: '数字3', text: this.number3 }).onChange((v: string) => { this.number3 = v }).type(InputType.Number).width(80)
+    Column({ space: 14 }) {
+      Text('🔢 输入 3 个数字，系统将据此推演卦象')
+        .fontSize(11).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
+      Row({ space: 10 }) {
+        TextInput({ placeholder: '数字1', text: this.number1 })
+          .onChange((v: string) => { this.number1 = v }).type(InputType.Number)
+          .width(80).fontSize(14).textAlign(TextAlign.Center)
+          .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE }).borderRadius(12)
+        TextInput({ placeholder: '数字2', text: this.number2 })
+          .onChange((v: string) => { this.number2 = v }).type(InputType.Number)
+          .width(80).fontSize(14).textAlign(TextAlign.Center)
+          .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE }).borderRadius(12)
+        TextInput({ placeholder: '数字3', text: this.number3 })
+          .onChange((v: string) => { this.number3 = v }).type(InputType.Number)
+          .width(80).fontSize(14).textAlign(TextAlign.Center)
+          .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE }).borderRadius(12)
       }.justifyContent(FlexAlign.Center)
-      Button('数字起卦').fontSize(13).fontWeight(FontWeight.Bold)
-        .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED)
+      Button('🔮 数字起卦').fontSize(13).fontWeight(FontWeight.Bold)
+        .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED).borderRadius(14)
+        .padding({ left: 32, right: 32, top: 12, bottom: 12 })
+        .shadow({ radius: 6, color: COLORS.IMPERIAL_RED + '25', offsetY: 2 })
         .onClick(() => { this.calculateNumberDivination() })
     }
     .width('100%').padding(20)
-    .backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+    .backgroundColor(COLORS.WHITE + '80')
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(18)
+    .shadow({ radius: 6, color: COLORS.INK_BLACK + '08', offsetY: 2 })
   }
 
   @Builder TimeInput() {
-    Column({ space: 16 }) {
-      Text('依据当前时间自动起卦').fontSize(10).fontColor(INK.PLACEHOLDER)
-      Button('时间起卦').fontSize(13).fontWeight(FontWeight.Bold)
-        .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED)
+    Column({ space: 14 }) {
+      Text('🕐 依据当前时间自动起卦')
+        .fontSize(11).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
+      Button('⏰ 时间起卦').fontSize(13).fontWeight(FontWeight.Bold)
+        .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED).borderRadius(14)
+        .padding({ left: 32, right: 32, top: 12, bottom: 12 })
+        .shadow({ radius: 6, color: COLORS.IMPERIAL_RED + '25', offsetY: 2 })
         .onClick(() => { this.calculateTimeDivination() })
     }
     .width('100%').padding(20)
-    .backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+    .backgroundColor(COLORS.WHITE + '80')
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(18)
+    .shadow({ radius: 6, color: COLORS.INK_BLACK + '08', offsetY: 2 })
   }
 
   @Builder ManualInput() {
     Column({ space: 12 }) {
-      Text('手动选择每爻的阴阳属性 (自下而上)').fontSize(10).fontColor(INK.PLACEHOLDER).margin({ bottom: 4 })
+      Text('✋ 手动选择每爻的阴阳属性（自下而上）')
+        .fontSize(11).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic).margin({ bottom: 4 })
       ForEach([0, 1, 2, 3, 4, 5], (idx: number) => {
-        Row({ space: 8 }) {
-          Text('第' + (idx + 1) + '爻：').fontSize(11).fontColor(INK.BODY)
-          Button('⚊ 少阳').fontSize(10)
-            .fontColor(this.getLineValueOr(idx, 7) === 7 ? COLORS.WHITE : INK.SECONDARY)
-            .backgroundColor(this.getLineValueOr(idx, 7) === 7 ? COLORS.INK_BLACK : INK.BG_FAINT)
-            .onClick(() => { this.setManualLine(idx, 7) })
-          Button('⚋ 少阴').fontSize(10)
-            .fontColor(this.getLineValueOr(idx, 8) === 8 ? COLORS.WHITE : INK.SECONDARY)
-            .backgroundColor(this.getLineValueOr(idx, 8) === 8 ? COLORS.INK_BLACK : INK.BG_FAINT)
-            .onClick(() => { this.setManualLine(idx, 8) })
-          Button('⚊ 老阳').fontSize(10)
-            .fontColor(this.getLineValueOr(idx, 9) === 9 ? COLORS.WHITE : RED.LABEL)
-            .backgroundColor(this.getLineValueOr(idx, 9) === 9 ? COLORS.IMPERIAL_RED : INK.BG_FAINT)
-            .onClick(() => { this.setManualLine(idx, 9) })
-          Button('⚋ 老阴').fontSize(10)
-            .fontColor(this.getLineValueOr(idx, 6) === 6 ? COLORS.WHITE : RED.LABEL)
-            .backgroundColor(this.getLineValueOr(idx, 6) === 6 ? COLORS.IMPERIAL_RED : INK.BG_FAINT)
-            .onClick(() => { this.setManualLine(idx, 6) })
+        Row({ space: 6 }) {
+          Text('第' + (idx + 1) + '爻').fontSize(10).fontColor(INK.BODY).width(36)
+          this.ManualLineButton(idx, 7, '少阳 ⚊')
+          this.ManualLineButton(idx, 8, '少阴 ⚋')
+          this.ManualLineButton(idx, 9, '老阳 ⚊')
+          this.ManualLineButton(idx, 6, '老阴 ⚋')
         }
-      }, (idx: number) => idx.toString())
+      })
       if (this.lines.length === 6 && !this.result) {
-        Button('排卦解卦').fontSize(13).fontWeight(FontWeight.Bold)
-          .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED)
+        Button('🔮 排卦解卦').fontSize(14).fontWeight(FontWeight.Bold)
+          .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK).borderRadius(14)
+          .padding({ top: 13, bottom: 13 }).width('100%')
+          .shadow({ radius: 8, color: COLORS.INK_BLACK + '20', offsetY: 3 })
           .onClick(() => { this.calculateResult() })
       }
       if (this.lines.length > 0) {
-        Button('重新起卦').fontSize(10).fontColor(INK.SECONDARY).onClick(() => { this.resetDivination() })
+        Button('🔄 重新起卦').fontSize(10).fontColor(INK.SECONDARY)
+          .onClick(() => { this.resetDivination() })
       }
     }
     .width('100%').padding(20)
-    .backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+    .backgroundColor(COLORS.WHITE + '80')
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(18)
+    .shadow({ radius: 6, color: COLORS.INK_BLACK + '08', offsetY: 2 })
+  }
+
+  @Builder ManualLineButton(idx: number, value: number, label: string) {
+    const selected = idx < this.lines.length && this.lines[idx].value === value
+    Button(label).fontSize(9).fontWeight(FontWeight.Bold)
+      .fontColor(selected ? COLORS.WHITE : (value >= 7 ? INK.SECONDARY : RED.LABEL))
+      .backgroundColor(selected ? (value >= 7 ? COLORS.INK_BLACK : COLORS.IMPERIAL_RED) : INK.BG_FAINT)
+      .borderRadius(8).padding({ left: 8, right: 8, top: 5, bottom: 5 })
+      .onClick(() => { this.setManualLine(idx, value) })
   }
 
   @Builder LineDisplay() {
     if (this.lines.length > 0) {
-      Column({ space: 2 }) {
-        ForEach(this.lines, (line: Line, _idx: number) => {
+      Column({ space: 3 }) {
+        ForEach([...this.lines].reverse(), (line: Line, _idx: number) => {
           Row() {
             if (line.type === 'yang') {
-              Row().width(80).height(4)
+              Row().width(80).height(5)
                 .backgroundColor(line.isMoving ? COLORS.IMPERIAL_RED : COLORS.INK_BLACK)
+                .borderRadius(2)
             } else {
-              Row({ space: 8 }) {
-                Row().width(32).height(4).backgroundColor(line.isMoving ? COLORS.IMPERIAL_RED : COLORS.INK_BLACK)
-                Row().width(32).height(4).backgroundColor(line.isMoving ? COLORS.IMPERIAL_RED : COLORS.INK_BLACK)
+              Row({ space: 10 }) {
+                Row().width(32).height(5)
+                  .backgroundColor(line.isMoving ? COLORS.IMPERIAL_RED : COLORS.INK_BLACK)
+                  .borderRadius(2)
+                Row().width(32).height(5)
+                  .backgroundColor(line.isMoving ? COLORS.IMPERIAL_RED : COLORS.INK_BLACK)
+                  .borderRadius(2)
               }.width(80)
             }
-          }.width(80).justifyContent(FlexAlign.Center).padding({ top: 4, bottom: 4 })
-        }, (_line: Line, idx: number) => idx.toString())
+          }.width(80).justifyContent(FlexAlign.Center).padding({ top: 5, bottom: 5 })
+        })
       }
-      .padding(12).backgroundColor(COLORS.WHITE + '99')
-      .border({ width: 1, color: INK.HAIRLINE })
+      .padding(14).backgroundColor(COLORS.WHITE + '99')
+      .border({ width: 1, color: INK.HAIRLINE }).borderRadius(14)
     }
   }
 
   // ========== Result display ==========
 
   @Builder ResultContent() {
-    Column({ space: 20 }) {
-      // 六爻排盘表 (京房纳甲系统) — professional table
+    Column({ space: 18 }) {
+      // 1. 六爻排盘表
       if (this.result) { this.LiuYaoTable() }
-      // 卦辞
+      // 2. 卦辞
       this.HexagramCard()
       if (this.result && this.result.changedHex) { this.EvolutionText() }
-      // 上下卦分析
+      // 3. 上下卦
       if (this.result) { this.TrigramBreakdownCard() }
-      // 彖传
+      // 4. 彖传 / 大象 / 序卦
       if (this.result && this.result.originalHex.tuanZhuan) { this.TuanZhuanCard() }
-      // 大象传
-      if (this.result && this.result.originalHex.daXiang) { this.DaXiangCard() }
-      // 序卦传
-      if (this.result && this.result.originalHex.xuGua) { this.XuGuaCard() }
-      // 体用
+      if (this.result && this.result.originalHex.daXiang)  { this.DaXiangCard() }
+      if (this.result && this.result.originalHex.xuGua)    { this.XuGuaCard() }
+      // 5. 体用
       if (this.result) { this.TiYongCard() }
-      // 爻位详情
+      // 6. 爻位详情
       if (this.result && this.result.originalHex.lines) { this.LineDetailsContent() }
-      Row({ space: 12 }) {
-        Button('复制卦象').fontSize(11).fontWeight(FontWeight.Bold)
+
+      // Actions
+      Row({ space: 10 }) {
+        Button('📋 复制').fontSize(11).fontWeight(FontWeight.Bold)
           .fontColor(COLORS.WHITE).backgroundColor(COLORS.INK_BLACK).layoutWeight(1)
-          .padding({ top: 10, bottom: 10 })
+          .borderRadius(12).padding({ top: 11, bottom: 11 })
           .onClick(() => { this.copyResult() })
-        Button('分享').fontSize(11).fontWeight(FontWeight.Bold)
+        Button('📤 分享').fontSize(11).fontWeight(FontWeight.Bold)
           .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED).layoutWeight(1)
-          .padding({ top: 10, bottom: 10 })
+          .borderRadius(12).padding({ top: 11, bottom: 11 })
           .onClick(() => { this.shareResult() })
-        Button('清空对话').fontSize(11).fontWeight(FontWeight.Bold)
+        Button('🗑 清空对话').fontSize(11).fontWeight(FontWeight.Bold)
           .fontColor(INK.LABEL).backgroundColor(INK.BG_FAINT).layoutWeight(1)
-          .padding({ top: 10, bottom: 10 })
+          .borderRadius(12).padding({ top: 11, bottom: 11 })
           .onClick(() => { this.chatHistory = [] })
       }.width('100%')
+
       this.OfflineReportCard()
       this.ChatContent()
     }
@@ -407,12 +435,12 @@ export struct IChingSection {
   @Builder OfflineReportCard() {
     Column({ space: 10 }) {
       Row({ space: 8 }) {
-        Text('离线详析').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
-        Text('OFFLINE REPORT').fontSize(8).fontColor(INK.PLACEHOLDER).fontWeight(FontWeight.Bold)
+        Text('📜 离线详析').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
+        Text('OFFLINE').fontSize(8).fontColor(INK.PLACEHOLDER).fontWeight(FontWeight.Bold)
         Blank().layoutWeight(1)
-        Button(this.showOffline ? '收起' : '展开')
+        Button(this.showOffline ? '收起 ▲' : '展开 ▼')
           .fontSize(9).fontColor(COLORS.IMPERIAL_RED).backgroundColor(RED.BG_MEDIUM)
-          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .borderRadius(10).padding({ left: 10, right: 10, top: 5, bottom: 5 })
           .onClick(() => { this.showOffline = !this.showOffline })
       }.width('100%')
       Text('未配置 AI 也能获得完整解读：卦辞、彖象、动爻、体用、互错综一应俱全。')
@@ -420,280 +448,283 @@ export struct IChingSection {
       if (this.showOffline && this.offlineReport.length > 0) {
         Scroll() {
           Text(this.offlineReport)
-            .fontSize(11).fontColor(INK.BODY).lineHeight(18)
-            .width('100%').padding(12)
+            .fontSize(11).fontColor(INK.BODY).lineHeight(19)
+            .width('100%').padding(14)
             .backgroundColor(COLORS.WHITE + '99')
-            .border({ width: 1, color: INK.HAIRLINE }).borderRadius(10)
+            .border({ width: 1, color: INK.HAIRLINE }).borderRadius(12)
         }.height(380).scrollable(ScrollDirection.Vertical).scrollBar(BarState.Auto)
       }
     }
-    .width('100%').padding(14).backgroundColor(COLORS.ACTIVE_CARD_BG)
-    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(16)
+    .width('100%').padding(14)
+    .backgroundColor(COLORS.ACTIVE_CARD_BG)
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(18)
   }
 
-  // ========== 六爻排盘表 (京房纳甲系统) ==========
+  // ========== 六爻排盘表 ==========
 
   @Builder LiuYaoTable() {
     if (this.liuyaoPan !== null) {
-      Column({ space: 8 }) {
-        // Header info row
+      Column({ space: 0 }) {
+        // Header info
         Row({ space: 12 }) {
-          Text(this.liuyaoPan!.hex.symbol + ' ' + this.liuyaoPan!.hex.name).fontSize(18).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
-          Text('属' + this.liuyaoPan!.palace + '宫(' + this.liuyaoPan!.palaceElement + ')').fontSize(10).fontColor(INK.PLACEHOLDER)
+          Text(this.liuyaoPan!.hex.symbol + ' ' + this.liuyaoPan!.hex.name)
+            .fontSize(20).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
+          Text('属' + this.liuyaoPan!.palace + '宫').fontSize(10).fontWeight(FontWeight.Bold)
+            .fontColor(COLORS.WHITE)
+            .backgroundColor(COLORS.INK_BLACK)
+            .borderRadius(8).padding({ left: 10, right: 10, top: 4, bottom: 4 })
           Blank().layoutWeight(1)
           Column({ space: 2 }) {
-            Text('月建：' + this.liuyaoPan!.monthStemBranch).fontSize(9).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
-            Text('日辰：' + this.liuyaoPan!.dayStemBranch).fontSize(9).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
-            Text('旬空：' + this.liuyaoPan!.xunKong.join('、')).fontSize(9).fontColor(INK.PLACEHOLDER)
+            Row({ space: 6 }) {
+              Text('月建 ' + this.liuyaoPan!.monthStemBranch).fontSize(9).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
+              Text('·').fontSize(9).fontColor(INK.PLACEHOLDER)
+              Text('日辰 ' + this.liuyaoPan!.dayStemBranch).fontSize(9).fontWeight(FontWeight.Bold)
+            }
+            Text('旬空：' + this.liuyaoPan!.xunKong.join('、'))
+              .fontSize(8).fontColor(INK.PLACEHOLDER)
           }.alignItems(HorizontalAlign.End)
-        }.width('100%').padding({ bottom: 4 })
-
-        Divider().color(COLORS.INK_BLACK).opacity(0.3)
+        }.width('100%').padding(14)
 
         // Column headers
         Row() {
-          Text('爻').width(30).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
-          Text('动').width(20).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
+          Text('爻').width(26).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
+          Text('动').width(22).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
           Text('六亲').width(40).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
-          Text('世应').width(30).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
-          Text('纳甲').width(46).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
-          Text('六兽').width(40).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
-          Text('爻 辞').layoutWeight(1).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
+          Text('世应').width(26).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
+          Text('纳甲').width(44).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
+          Text('六兽').width(38).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
+          Text('爻辞').layoutWeight(1).fontSize(8).fontColor(COLORS.WHITE).fontWeight(FontWeight.Bold)
         }
-        .width('100%').padding({ left: 6, right: 6, top: 6, bottom: 6 })
+        .width('100%').padding({ left: 8, right: 8, top: 7, bottom: 7 })
         .backgroundColor(COLORS.INK_BLACK)
 
-        // Rows: 上→初 (reverse from top to bottom)
+        // Rows
         ForEach(this.liuyaoPan!.lines.slice().reverse(), (line: LiuYaoLine, ri: number) => {
           Row() {
-            // 爻位 + 阴阳符号
             Text(line.positionName + (line.lineYang ? ' ⚊' : ' ⚋'))
-              .width(30).fontSize(10)
-              .fontColor(line.isMoving ? COLORS.IMPERIAL_RED : line.shiYing !== '—' ? COLORS.INK_BLACK : INK.BODY)
+              .width(26).fontSize(10)
+              .fontColor(line.isMoving ? COLORS.IMPERIAL_RED :
+                line.shiYing !== '—' ? COLORS.INK_BLACK : INK.BODY)
               .fontWeight(line.isMoving || line.shiYing !== '—' ? FontWeight.Bold : FontWeight.Normal)
-            // 动
             Text(line.isMoving ? '○' : '')
-              .width(20).fontSize(10)
-              .fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
-            // 六亲 (colored)
-            Text(line.liuqin)
-              .width(40).fontSize(10)
+              .width(22).fontSize(11).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
+            Text(line.liuqin).width(40).fontSize(10).fontWeight(FontWeight.Bold)
               .fontColor(line.liuqin === '官鬼' ? COLORS.IMPERIAL_RED :
-                line.liuqin === '妻财' ? COLORS.WOOD :
-                line.liuqin === '子孙' ? COLORS.AMBER_GOLD : COLORS.INK_BLACK)
-              .fontWeight(FontWeight.Bold)
-            // 世应
-            Text(line.shiYing)
-              .width(30).fontSize(10)
+                         line.liuqin === '妻财' ? COLORS.WOOD :
+                         line.liuqin === '子孙' ? COLORS.AMBER_GOLD : COLORS.INK_BLACK)
+            Text(line.shiYing).width(26).fontSize(10).fontWeight(FontWeight.Bold)
               .fontColor(line.shiYing === '世' ? COLORS.IMPERIAL_RED :
-                line.shiYing === '应' ? COLORS.WATER : INK.PLACEHOLDER)
-              .fontWeight(FontWeight.Bold)
-            // 纳甲 (strikethrough if 旬空)
+                         line.shiYing === '应' ? COLORS.WATER : INK.PLACEHOLDER)
             Text(line.nazhi.stem + line.nazhi.branch)
-              .width(46).fontSize(9)
+              .width(44).fontSize(9)
               .fontColor(this.isLiuYaoKong(line) ? INK.PLACEHOLDER : INK.BODY)
-              .decoration(this.isLiuYaoKong(line) ? { type: TextDecorationType.LineThrough } : { type: TextDecorationType.None })
-            // 六兽
-            Text(line.liushou)
-              .width(40).fontSize(8)
+              .decoration(this.isLiuYaoKong(line) ?
+                { type: TextDecorationType.LineThrough } : { type: TextDecorationType.None })
+            Text(line.liushou).width(38).fontSize(8)
               .fontColor(line.liushou === '青龙' ? COLORS.WOOD :
-                line.liushou === '朱雀' ? COLORS.IMPERIAL_RED :
-                line.liushou === '玄武' ? COLORS.WATER :
-                line.liushou === '白虎' ? COLORS.METAL : INK.SECONDARY)
-            // 爻辞
+                         line.liushou === '朱雀' ? COLORS.IMPERIAL_RED :
+                         line.liushou === '玄武' ? COLORS.WATER :
+                         line.liushou === '白虎' ? COLORS.METAL : INK.SECONDARY)
             Text(this.getHexLineText(5 - ri))
               .layoutWeight(1).fontSize(9).fontColor(INK.SECONDARY)
               .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
           }
-          .width('100%').padding({ left: 6, right: 6, top: 7, bottom: 7 })
-          .backgroundColor(line.shiYing !== '—' ? COLORS.ACTIVE_CARD_BG : COLORS.WHITE)
+          .width('100%').padding({ left: 8, right: 8, top: 8, bottom: 8 })
+          .backgroundColor(line.shiYing !== '—' ? COLORS.ACTIVE_CARD_BG :
+                           line.isMoving ? RED.BG_FAINT : COLORS.WHITE + '66')
           .border({ width: { bottom: 1 }, color: INK.HAIRLINE })
-        }, (_line: LiuYaoLine, idx: number) => idx.toString())
+        })
       }
-      .width('100%').padding(12)
-      .backgroundColor(COLORS.WHITE).border({ width: 1, color: COLORS.INK_BLACK })
+      .width('100%')
+      .backgroundColor(COLORS.WHITE)
+      .border({ width: 1.5, color: COLORS.INK_BLACK }).borderRadius(14)
+      .shadow({ radius: 8, color: COLORS.INK_BLACK + '10', offsetY: 2 })
     }
   }
 
+  // ========== Hexagram card ==========
+
   @Builder HexagramCard() {
     if (this.result) {
-      Column({ space: 12 }) {
+      Column({ space: 14 }) {
         Row({ space: 16 }) {
-          Text(this.result!.originalHex.symbol).fontSize(64).fontColor(COLORS.IMPERIAL_RED)
+          Text(this.result!.originalHex.symbol).fontSize(72).fontColor(COLORS.IMPERIAL_RED)
           if (this.result!.changedHex) {
-            Text('→').fontSize(24).fontColor(INK.PLACEHOLDER)
-            Text(this.result!.changedHex.symbol).fontSize(64).fontColor(COLORS.INK_BLACK)
+            Text('→').fontSize(28).fontColor(INK.PLACEHOLDER)
+            Text(this.result!.changedHex.symbol).fontSize(72).fontColor(COLORS.INK_BLACK)
           }
           Column({ space: 4 }) {
-            Text(this.result!.originalHex.name).fontSize(32).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
-            Text(this.result!.originalHex.pinyin).fontSize(12).fontColor(INK.SECONDARY)
-            Text('第' + this.result!.originalHex.number + '卦').fontSize(10).fontColor(INK.PLACEHOLDER)
+            Text(this.result!.originalHex.name).fontSize(34).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
+            Text(this.result!.originalHex.pinyin).fontSize(13).fontColor(INK.SECONDARY)
+            Text('第' + this.result!.originalHex.number + '卦')
+              .fontSize(10).fontColor(INK.PLACEHOLDER)
+              .backgroundColor(INK.BG_FAINT).borderRadius(6)
+              .padding({ left: 8, right: 8, top: 3, bottom: 3 })
           }.alignItems(HorizontalAlign.Start)
         }
-        Text(this.result!.originalHex.judgement).fontSize(14).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
-        Text(this.result!.originalHex.meaning).fontSize(12).fontColor(INK.BODY).lineHeight(20)
+        Divider().color(RED.BORDER)
+        Text(this.result!.originalHex.judgement)
+          .fontSize(16).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
+        Text(this.result!.originalHex.meaning)
+          .fontSize(12).fontColor(INK.BODY).lineHeight(20)
       }
-      .width('100%').padding(24)
-      .backgroundColor(COLORS.ACTIVE_CARD_BG).border({ width: 1, color: INK.HAIRLINE })
+      .width('100%').padding(22)
+      .backgroundColor(COLORS.ACTIVE_CARD_BG)
+      .border({ width: 1.5, color: RED.BORDER }).borderRadius(18)
+      .shadow({ radius: 8, color: COLORS.INK_BLACK + '0C', offsetY: 3 })
     }
   }
 
   @Builder EvolutionText() {
     if (this.result && this.result.changedHex) {
-      Text('目前处于【' + this.result.originalHex.name + '】之势，由于能量在爻位的剧烈波动，正在向【' + this.result.changedHex.name + '】卦演化。')
-        .fontSize(11).fontColor(INK.SECONDARY).fontStyle(FontStyle.Italic).lineHeight(18)
-        .width('100%').padding(12)
+      Text('⚡ 由于动爻能量波动，【' + this.result.originalHex.name + '】正在向【' +
+        this.result.changedHex.name + '】卦演化。')
+        .fontSize(12).fontWeight(FontWeight.Bold).fontColor(COLORS.IMPERIAL_RED).lineHeight(19)
+        .width('100%').padding(14)
         .backgroundColor(RED.BG_FAINT)
-        .border({ width: { left: 2 }, color: RED.BORDER })
+        .border({ width: { left: 3 }, color: COLORS.IMPERIAL_RED }).borderRadius(12)
     }
   }
 
-  // 上下卦分析
   @Builder TrigramBreakdownCard() {
     if (this.result) {
-      Column({ space: 8 }) {
-        Text('上下卦').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
-        Row({ space: 12 }) {
-          // Lower trigram
+      Column({ space: 12 }) {
+        Text('上下卦').fontSize(13).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
+        Row({ space: 10 }) {
           Column({ space: 4 }) {
-            Text('下卦（内卦）').fontSize(9).fontColor(INK.PLACEHOLDER)
-            Text(this.getLowerTrigram().name + ' ' + this.getLowerTrigram().nature).fontSize(16).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
-            Text('五行：' + this.getLowerTrigram().element).fontSize(10).fontColor(INK.SECONDARY)
+            Text('下卦（内卦）').fontSize(8).fontColor(INK.PLACEHOLDER).fontWeight(FontWeight.Bold)
+            Text(this.getLowerTrigram().name + ' ' + this.getLowerTrigram().nature)
+              .fontSize(18).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
+            Text('五行 ' + this.getLowerTrigram().element)
+              .fontSize(10).fontColor(INK.SECONDARY)
+              .backgroundColor(INK.BG_FAINT).borderRadius(6)
+              .padding({ left: 8, right: 8, top: 3, bottom: 3 })
           }
-          .padding(12).backgroundColor(INK.BG_FAINT).layoutWeight(1)
-          Text('⚡').fontSize(16)
-          // Upper trigram
+          .padding(14).backgroundColor(INK.BG_FAINT).borderRadius(14).layoutWeight(1)
+          Text('→').fontSize(20).fontColor(INK.PLACEHOLDER)
           Column({ space: 4 }) {
-            Text('上卦（外卦）').fontSize(9).fontColor(INK.PLACEHOLDER)
-            Text(this.getUpperTrigram().name + ' ' + this.getUpperTrigram().nature).fontSize(16).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
-            Text('五行：' + this.getUpperTrigram().element).fontSize(10).fontColor(INK.SECONDARY)
+            Text('上卦（外卦）').fontSize(8).fontColor(INK.PLACEHOLDER).fontWeight(FontWeight.Bold)
+            Text(this.getUpperTrigram().name + ' ' + this.getUpperTrigram().nature)
+              .fontSize(18).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
+            Text('五行 ' + this.getUpperTrigram().element)
+              .fontSize(10).fontColor(INK.SECONDARY)
+              .backgroundColor(INK.BG_FAINT).borderRadius(6)
+              .padding({ left: 8, right: 8, top: 3, bottom: 3 })
           }
-          .padding(12).backgroundColor(INK.BG_FAINT).layoutWeight(1)
+          .padding(14).backgroundColor(INK.BG_FAINT).borderRadius(14).layoutWeight(1)
         }.width('100%')
       }
-      .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+      .width('100%').padding(16)
+      .backgroundColor(COLORS.WHITE + '80')
+      .border({ width: 1, color: INK.HAIRLINE }).borderRadius(18)
+      .shadow({ radius: 6, color: COLORS.INK_BLACK + '08', offsetY: 2 })
     }
   }
 
-  // 彖传
   @Builder TuanZhuanCard() {
-    if (this.result && this.result.originalHex.tuanZhuan) {
-      Column({ space: 8 }) {
-        Row({ space: 8 }) {
-          Circle({ width: 6, height: 6 }).fill(COLORS.IMPERIAL_RED)
-          Text('彖传').fontSize(13).fontWeight(FontWeight.Bold).fontColor(COLORS.IMPERIAL_RED)
-          Text('（卦辞诠释）').fontSize(9).fontColor(INK.PLACEHOLDER)
-        }
-        Text(this.result.originalHex.tuanZhuan)
-          .fontSize(11).fontColor(INK.SECONDARY).lineHeight(20)
+    Column({ space: 10 }) {
+      Row({ space: 8 }) {
+        Circle({ width: 7, height: 7 }).fill(COLORS.IMPERIAL_RED)
+        Text('📖 彖传（卦辞诠释）').fontSize(12).fontWeight(FontWeight.Bold).fontColor(COLORS.IMPERIAL_RED)
       }
-      .width('100%').padding(16).backgroundColor(COLORS.ACTIVE_CARD_BG).border({ width: 1, color: INK.HAIRLINE })
+      Text(this.result!.originalHex.tuanZhuan!)
+        .fontSize(11).fontColor(INK.SECONDARY).lineHeight(20)
     }
+    .width('100%').padding(16)
+    .backgroundColor(COLORS.ACTIVE_CARD_BG)
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(18)
   }
 
-  // 大象传
   @Builder DaXiangCard() {
-    if (this.result && this.result.originalHex.daXiang) {
-      Column({ space: 8 }) {
-        Row({ space: 8 }) {
-          Circle({ width: 6, height: 6 }).fill(COLORS.AMBER_GOLD)
-          Text('大象传').fontSize(13).fontWeight(FontWeight.Bold).fontColor(COLORS.AMBER_GOLD)
-          Text('（象辞启示）').fontSize(9).fontColor(INK.PLACEHOLDER)
-        }
-        Text(this.result.originalHex.daXiang)
-          .fontSize(12).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold).lineHeight(22)
+    Column({ space: 10 }) {
+      Row({ space: 8 }) {
+        Circle({ width: 7, height: 7 }).fill(COLORS.AMBER_GOLD)
+        Text('⚡ 大象传（象辞启示）').fontSize(12).fontWeight(FontWeight.Bold).fontColor(COLORS.AMBER_GOLD)
       }
-      .width('100%').padding(16).backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+      Text(this.result!.originalHex.daXiang!)
+        .fontSize(13).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK).lineHeight(22)
     }
+    .width('100%').padding(16)
+    .backgroundColor(COLORS.WHITE + '80')
+    .border({ width: 1, color: INK.HAIRLINE }).borderRadius(18)
   }
 
-  // 序卦传
   @Builder XuGuaCard() {
-    if (this.result && this.result.originalHex.xuGua) {
-      Column({ space: 8 }) {
-        Row({ space: 8 }) {
-          Text('📜').fontSize(12)
-          Text('序卦传').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
-          Text('（卦序由来）').fontSize(9).fontColor(INK.PLACEHOLDER)
-        }
-        Text(this.result.originalHex.xuGua)
-          .fontSize(10).fontColor(INK.SECONDARY).fontStyle(FontStyle.Italic).lineHeight(17)
+    Column({ space: 8 }) {
+      Row({ space: 8 }) {
+        Text('📜 序卦传（卦序由来）').fontSize(11).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
       }
-      .width('100%').padding(12)
-      .backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE })
+      Text(this.result!.originalHex.xuGua!)
+        .fontSize(10).fontColor(INK.SECONDARY).fontStyle(FontStyle.Italic).lineHeight(17)
     }
+    .width('100%').padding(14)
+    .backgroundColor(INK.BG_FAINT).borderRadius(12)
   }
 
   @Builder TiYongCard() {
     if (this.result) {
-      Column({ space: 8 }) {
-        Text('体用生克').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
-        Row({ space: 16 }) {
+      Column({ space: 12 }) {
+        Text('体用生克').fontSize(13).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
+        Row({ space: 14 }) {
           Column({ space: 4 }) {
-            Text('体卦 (主方)').fontSize(9).fontColor(INK.PLACEHOLDER)
-            Text(this.result!.tiYong.ti + ' (' + this.result!.tiYong.tiElement + ')').fontSize(18)
-              .fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+            Text('体卦（主方）').fontSize(8).fontColor(INK.PLACEHOLDER).fontWeight(FontWeight.Bold)
+            Text(this.result!.tiYong.ti + '（' + this.result!.tiYong.tiElement + '）')
+              .fontSize(20).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
           }
-          Text('⚡').fontSize(20)
+          Text('↔').fontSize(22).fontColor(INK.PLACEHOLDER)
           Column({ space: 4 }) {
-            Text('用卦 (客方)').fontSize(9).fontColor(INK.PLACEHOLDER)
-            Text(this.result!.tiYong.yong + ' (' + this.result!.tiYong.yongElement + ')').fontSize(18)
-              .fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+            Text('用卦（客方）').fontSize(8).fontColor(INK.PLACEHOLDER).fontWeight(FontWeight.Bold)
+            Text(this.result!.tiYong.yong + '（' + this.result!.tiYong.yongElement + '）')
+              .fontSize(20).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
           }
         }
         Text(this.result!.tiYong.relation + ' · ' + this.result!.tiYong.relative)
-          .fontSize(14).fontColor(COLORS.IMPERIAL_RED).fontWeight(FontWeight.Bold)
-        Text(this.result!.tiYong.description).fontSize(11).fontColor(INK.SECONDARY).lineHeight(18)
+          .fontSize(16).fontWeight(FontWeight.Bold).fontColor(COLORS.IMPERIAL_RED)
+        Text(this.result!.tiYong.description)
+          .fontSize(11).fontColor(INK.SECONDARY).lineHeight(18)
       }
       .width('100%').padding(16)
-      .backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
+      .backgroundColor(COLORS.WHITE + '80')
+      .border({ width: 1, color: INK.HAIRLINE }).borderRadius(18)
     }
   }
 
   @Builder LineDetailsContent() {
     Column({ space: 8 }) {
       Row({ space: 8 }) {
-        Text('爻位详情').fontSize(12).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
-        Text(this.result!.movingIndexes.length + ' 个动爻').fontSize(9)
-          .fontColor(COLORS.IMPERIAL_RED)
-          .backgroundColor(RED.BG_MEDIUM)
-          .padding({ left: 8, right: 8, top: 2, bottom: 2 }).borderRadius(4)
+        Text('爻位详情').fontSize(13).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
+        Text(this.result!.movingIndexes.length + ' 动爻').fontSize(9).fontWeight(FontWeight.Bold)
+          .fontColor(COLORS.WHITE).backgroundColor(COLORS.IMPERIAL_RED)
+          .borderRadius(8).padding({ left: 10, right: 10, top: 3, bottom: 3 })
       }
       ForEach(this.result!.lineDetails, (detail: LineDetail, idx: number) => {
         Column({ space: 8 }) {
-          // Header
           Row() {
-            Text(this.isMovingLine(idx) ? '⚡ 第' + (idx + 1) + '爻 (动爻)' : '第' + (idx + 1) + '爻')
-              .fontSize(10)
+            Text(this.isMovingLine(idx) ? '⚡ 第' + (idx + 1) + '爻（动爻）' : '第' + (idx + 1) + '爻')
+              .fontSize(10).fontWeight(this.isMovingLine(idx) ? FontWeight.Bold : FontWeight.Normal)
               .fontColor(this.isMovingLine(idx) ? COLORS.IMPERIAL_RED : INK.BODY)
-              .fontWeight(this.isMovingLine(idx) ? FontWeight.Bold : FontWeight.Normal)
           }
-          // 爻辞
-          Text(detail.text).fontSize(14).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
-          // 小象传 (NEW)
+          Text(detail.text).fontSize(15).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
           if (detail.xiaoXiang) {
             Text('《象》曰：' + detail.xiaoXiang)
               .fontSize(10).fontColor(COLORS.AMBER_GOLD).fontStyle(FontStyle.Italic)
               .padding({ left: 8, top: 4, bottom: 4 })
-              .border({ width: { left: 2 }, color: COLORS.AMBER_GOLD + '33' })
+              .border({ width: { left: 3 }, color: COLORS.AMBER_GOLD + '40' })
           }
-          // 爻位分析 (NEW)
           if (detail.yaoWei) {
-            Text(detail.yaoWei)
-              .fontSize(9).fontColor(INK.PLACEHOLDER).lineHeight(14)
-              .padding(6).backgroundColor(INK.BG_FAINT)
+            Text(detail.yaoWei).fontSize(9).fontColor(INK.PLACEHOLDER).lineHeight(14)
+              .padding(8).backgroundColor(INK.BG_FAINT).borderRadius(8)
           }
-          // Position context
           Text(detail.positionContext).fontSize(10).fontColor(INK.PLACEHOLDER).fontStyle(FontStyle.Italic)
-          // Analysis
-          Text(detail.analysis).fontSize(10).fontColor(INK.SECONDARY).lineHeight(16)
-          // Allusion
+          Text(detail.analysis).fontSize(10).fontColor(INK.SECONDARY).lineHeight(17)
           Text(detail.allusion).fontSize(9).fontColor(INK.PLACEHOLDER).lineHeight(14)
-            .padding(8).backgroundColor(INK.BG_FAINT)
+            .padding(10).backgroundColor(INK.BG_FAINT).borderRadius(10)
         }
-        .width('100%').padding(12).backgroundColor(COLORS.WHITE + '99')
-        .border({ width: 1, color: this.isMovingLine(idx) ? RED.BORDER : INK.HAIRLINE })
-      }, (_detail: LineDetail, idx: number) => idx.toString())
+        .width('100%').padding(14)
+        .backgroundColor(COLORS.WHITE + '99')
+        .border({ width: 1.5, color: this.isMovingLine(idx) ? RED.BORDER : INK.HAIRLINE })
+        .borderRadius(14)
+      })
     }.width('100%')
   }
 
@@ -708,57 +739,43 @@ export struct IChingSection {
     })
   }
 
-  @Builder HistoryContent() {
-    Column({ space: 8 }) {
-      Text('历史记录').fontSize(11).fontWeight(FontWeight.Bold).fontColor(INK.CAPTION)
-      ForEach(this.history, (item: DivinationResult, idx: number) => {
-        Row({ space: 12 }) {
-          Text(item.originalHex.symbol).fontSize(24).fontColor(COLORS.IMPERIAL_RED)
-          Column({ space: 2 }) {
-            Text(item.originalHex.name).fontSize(13).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
-            Text(item.originalHex.judgement).fontSize(10).fontColor(INK.SECONDARY)
-              .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-          }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-        }
-        .width('100%').padding(12)
-        .backgroundColor(COLORS.WHITE + '80').border({ width: 1, color: INK.HAIRLINE })
-        .onClick(() => {
-          this.applyResult(item, false)
-        })
-      }, (_item: DivinationResult, idx: number) => idx.toString())
-    }.width('100%')
-  }
-
   @Builder RecordsPanel() {
-    Column({ space: 8 }) {
+    Column({ space: 6 }) {
       if (this.records.length === 0) {
         Text('暂无保存的记录，起卦后将自动保存。')
-          .fontSize(10).fontColor(INK.PLACEHOLDER).padding(12)
+          .fontSize(10).fontColor(INK.PLACEHOLDER).padding(14)
       } else {
         ForEach(this.records, (rec: SavedIChingReading) => {
-          Row({ space: 8 }) {
-            Column({ space: 2 }) {
+          Row({ space: 10 }) {
+            Column({ space: 3 }) {
               Text(rec.hexagramSymbol + ' ' + rec.hexagramName + ' · 第' + rec.hexagramNumber + '卦')
-                .fontSize(11).fontColor(COLORS.INK_BLACK).fontWeight(FontWeight.Bold)
+                .fontSize(11).fontWeight(FontWeight.Bold).fontColor(COLORS.INK_BLACK)
               Text((rec.changedName ? rec.hexagramName + '→' + rec.changedName : rec.judgement) +
                 ' · ' + rec.movingCount + '动爻')
-                .fontSize(9).fontColor(INK.SECONDARY).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+                .fontSize(9).fontColor(INK.SECONDARY)
+                .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
             }.alignItems(HorizontalAlign.Start).layoutWeight(1)
             Button('恢复').fontSize(9).fontColor(COLORS.IMPERIAL_RED)
-              .backgroundColor(RED.BG_MEDIUM).padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .backgroundColor(RED.BG_MEDIUM).borderRadius(8)
+              .padding({ left: 10, right: 10, top: 6, bottom: 6 })
               .onClick(() => { this.restoreRecord(rec) })
             Button('删除').fontSize(9).fontColor(INK.SECONDARY)
-              .backgroundColor(INK.BG_FAINT).padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .backgroundColor(INK.BG_FAINT).borderRadius(8)
+              .padding({ left: 10, right: 10, top: 6, bottom: 6 })
               .onClick(() => { this.removeRecord(rec) })
           }
-          .width('100%').padding(10).backgroundColor(COLORS.WHITE + '99')
-          .border({ width: 1, color: INK.HAIRLINE }).borderRadius(8)
-        }, (rec: SavedIChingReading) => rec.id)
+          .width('100%').padding(12)
+          .backgroundColor(COLORS.WHITE + '99')
+          .border({ width: 1, color: INK.HAIRLINE }).borderRadius(12)
+        })
       }
-    }.width('100%').padding(12).backgroundColor(INK.BG_FAINT).border({ width: 1, color: INK.HAIRLINE })
+    }
+    .width('100%').padding(12)
+    .backgroundColor(INK.BG_FAINT).borderRadius(14)
+    .border({ width: 1, color: INK.HAIRLINE })
   }
 
-  // ========== Logic ==========
+  // ========== Logic (unchanged) ==========
 
   getLineValueOr(idx: number, defaultVal: number): number {
     return idx < this.lines.length ? this.lines[idx].value : defaultVal
@@ -811,28 +828,20 @@ export struct IChingSection {
     this.result = res
     this.baseAnalysis = getOfflineIChingAnalysis(res.originalBinary)
     this.offlineReport = buildOfflineIChingReport({
-      originalHex: res.originalHex,
-      changedHex: res.changedHex,
-      mutualHex: res.mutualHex,
-      oppositeHex: res.oppositeHex,
-      inverseHex: res.inverseHex,
-      tiYong: res.tiYong,
-      movingIndexes: res.movingIndexes,
-      lineDetails: res.lineDetails
+      originalHex: res.originalHex, changedHex: res.changedHex,
+      mutualHex: res.mutualHex, oppositeHex: res.oppositeHex, inverseHex: res.inverseHex,
+      tiYong: res.tiYong, movingIndexes: res.movingIndexes, lineDetails: res.lineDetails
     })
     this.chatHistory = []
     this.history = [res, ...this.history.slice(0, 9)]
 
-    // Build liuyao pan with current time
     const now = new Date()
     const daySBText = getDayStemBranch(now)
     const monthSBText = getMonthStemBranch(now)
     this.liuyaoPan = buildLiuYaoPan(res.originalBinary, res.movingIndexes,
       daySBText.charAt(0), daySBText.charAt(1), monthSBText.charAt(0), monthSBText.charAt(1))
 
-    if (recordIt) {
-      this.saveRecord(res)
-    }
+    if (recordIt) { this.saveRecord(res) }
   }
 
   async saveRecord(res: DivinationResult) {
@@ -857,11 +866,7 @@ export struct IChingSection {
 
   async restoreRecord(rec: SavedIChingReading) {
     let moving: number[] = []
-    try {
-      moving = JSON.parse(rec.moving) as number[]
-    } catch (_e) {
-      moving = []
-    }
+    try { moving = JSON.parse(rec.moving) as number[] } catch (_e) { moving = [] }
     this.applyResult(this.buildResultFromBinary(rec.binary, moving), false)
   }
 
@@ -922,36 +927,26 @@ export struct IChingSection {
   generateLines(seed: number, mul: number, add: number): void {
     this.lines = []
     for (let i = 0; i < 6; i++) {
-      const v = ((seed * (i + 1) * mul + i * add) % 16) < 1 ? 6 : ((seed * (i + 1) * mul + i * add) % 16) < 4 ? 9 : ((seed * (i + 1) * mul + i * add) % 16) < 8 ? 7 : 8
+      const v = ((seed * (i + 1) * mul + i * add) % 16) < 1 ? 6 :
+        ((seed * (i + 1) * mul + i * add) % 16) < 4 ? 9 :
+        ((seed * (i + 1) * mul + i * add) % 16) < 8 ? 7 : 8
       this.lines.push({ value: v, isMoving: v === 6 || v === 9, type: (v === 7 || v === 9) ? 'yang' : 'yin' })
     }
   }
 
-  isMovingLine(idx: number): boolean {
-    return this.result ? this.result.movingIndexes.indexOf(idx) >= 0 : false
-  }
-
+  isMovingLine(idx: number): boolean { return this.result ? this.result.movingIndexes.indexOf(idx) >= 0 : false }
   isLiuYaoKong(line: LiuYaoLine): boolean {
     if (!this.liuyaoPan) return false
     return line.nazhi.branch === this.liuyaoPan.xunKong[0] || line.nazhi.branch === this.liuyaoPan.xunKong[1]
   }
-
   getHexLineText(lineIdx: number): string {
     if (!this.liuyaoPan) return ''
     const lines = this.liuyaoPan.hex.lines
     if (!lines || lineIdx < 0 || lineIdx >= lines.length) return ''
     return lines[lineIdx]
   }
-
-  getLowerTrigram(): TrigramBrief {
-    if (!this.result) return { name: '?', nature: '?', element: '?' }
-    return getTrigramFromBin(this.result.originalHex.binary.slice(0, 3))
-  }
-
-  getUpperTrigram(): TrigramBrief {
-    if (!this.result) return { name: '?', nature: '?', element: '?' }
-    return getTrigramFromBin(this.result.originalHex.binary.slice(3, 6))
-  }
+  getLowerTrigram(): TrigramBrief { if (!this.result) return { name: '?', nature: '?', element: '?' }; return getTrigramFromBin(this.result.originalHex.binary.slice(0, 3)) }
+  getUpperTrigram(): TrigramBrief { if (!this.result) return { name: '?', nature: '?', element: '?' }; return getTrigramFromBin(this.result.originalHex.binary.slice(3, 6)) }
 
   async sendFollowUp(text: string) {
     if (!this.result) return
@@ -965,17 +960,12 @@ export struct IChingSection {
         ...this.chatHistory
       ]
       let reply: string
-      if (!this.aiConfig.apiKey) {
-        reply = this.offlineReport
-      } else {
-        reply = await interpretMetaphysics(messages, this.aiConfig)
-      }
+      if (!this.aiConfig.apiKey) { reply = this.offlineReport }
+      else { reply = await interpretMetaphysics(messages, this.aiConfig) }
       this.chatHistory = [...this.chatHistory, { role: 'assistant', content: reply }]
     } catch (_e) {
       this.chatHistory = [...this.chatHistory, { role: 'assistant', content: 'AI解析暂时不可用。' + this.baseAnalysis }]
-    } finally {
-      this.aiLoading = false
-    }
+    } finally { this.aiLoading = false }
   }
 
   buildHexagramContext(): string {
@@ -983,10 +973,7 @@ export struct IChingSection {
     const r = this.result
     let catLabel: string = '综合运势'
     for (let i: number = 0; i < QUESTION_CATEGORIES.length; i++) {
-      if (QUESTION_CATEGORIES[i].id === this.activeCategory) {
-        catLabel = QUESTION_CATEGORIES[i].label
-        break
-      }
+      if (QUESTION_CATEGORIES[i].id === this.activeCategory) { catLabel = QUESTION_CATEGORIES[i].label; break }
     }
     let ctx = '请作为天道先生，对以下卦象进行【' + catLabel + '】方面的解析：\n' +
       '本卦：' + r.originalHex.symbol + ' ' + r.originalHex.name + '(' + r.originalHex.pinyin + ')\n' +
@@ -999,5 +986,4 @@ export struct IChingSection {
       '动爻数量：' + r.movingIndexes.length + '个'
     return ctx
   }
-
 }
