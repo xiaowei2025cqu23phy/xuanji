@@ -460,12 +460,14 @@ export function getTrueSolarTime(date: Date, longitude: number): TrueSolarInfo {
 // ============================================================
 function computeMingGong(yearStemIdx: number, monthNum: number, hourBranchIdx: number): PalaceInfo {
   // 命宫推法（《三命通会》）：
-  // 1) 子位起正月，逆数至生月 → 月宫
-  // 2) 月宫起子时，顺数至生时 → 落宫
-  // 3) 落宫数至卯位 → 命宫（数学上等价于 月宫+4，与生时无关）
+  // 1) 子位起正月，逆数至生月 → 月宫 ( = (13 - monthNum) mod 12 )
+  // 2) 月宫起子时，顺数至生时 → 落宫 ( = (月宫 + 时支序) mod 12 )
+  // 3) 落宫从子时顺数至卯位（卯为第 4 位），即再前进 (4 - 时支序) 步
+  //    合并：命宫支 = (月宫 + 时支序 + 4 - 时支序) mod 12 = (月宫 + 4) mod 12
+  //    → 结果与时辰无关（这是命宫算法的标准结论），此处保留 hourBranchIdx 仅为可读性对齐，
+  //      实际计算应固定为 月宫 + 4。
   const monthPalace = (13 - monthNum) % 12
-  const hourPalace = (monthPalace + hourBranchIdx) % 12
-  const branchIdx = (hourPalace + ((4 - hourBranchIdx) % 12 + 12) % 12) % 12
+  const branchIdx = (monthPalace + 4) % 12
   const mgMonthNum = ((branchIdx - 2) % 12 + 12) % 12 + 1
   const monthSBIndex = getMonthStemBranchIndex(yearStemIdx % 10, mgMonthNum)
   return { stem: HEAVENLY_STEMS[monthSBIndex % 10], branch: EARTHLY_BRANCHES[branchIdx] }
@@ -585,10 +587,13 @@ function computeDayun(yearStem: string, monthStemIdx: number, monthBranchIdx: nu
   const termJd = forward ? afterJd : beforeJd
   const diffHours = Math.abs(termJd - birthJd) * 24
   // 3天=1年=12个月 → 1个月 = 6小时，起运年龄精确到月
-  const startMonths = Math.max(12, Math.round(diffHours / 6))
+  // 仅做最低钳制（不足 1 个月按 1 个月计），避免为 0；不强制抬到 12 个月，
+  // 以体现"出生离节很近者起运很早"的精确结果。
+  const startMonths = Math.max(1, Math.round(diffHours / 6))
   const startAgeYears = Math.floor(startMonths / 12)
   const startAgeMonths = startMonths % 12
-  const startAge = Math.max(1, startAgeYears)
+  // 起运整数岁（真实值，允许为 0：表示出生当年即起运），供大运区间起点使用
+  const startAge = startAgeYears
   const startAgeText = startAgeMonths > 0
     ? startAgeYears + '岁' + startAgeMonths + '个月'
     : startAgeYears + '岁'

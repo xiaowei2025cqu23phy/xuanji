@@ -200,13 +200,13 @@ export async function loadAIConfig(): Promise<AIConfig> {
 }
 
 export async function saveAIConfig(config: AIConfig): Promise<void> {
-  // 优先写入系统 Asset Store（加密）；失败时降级为 Preferences，保证功能可用
-  let assetSaved = false
+  // 优先写入系统 Asset Store（加密）；失败时不再降级为明文落盘，
+  // 避免密钥以明文形式持久化。调用方应捕获异常并提示用户。
   try {
     await saveApiKeyAsset(config.apiKey)
-    assetSaved = true
   } catch (_e) {
-    assetSaved = false
+    // Asset Store 写入失败：明确抛出，由 UI 提示用户"密钥未加密保存"
+    throw new Error('密钥加密存储失败，配置未保存')
   }
   if (!preferences) {
     return
@@ -215,16 +215,11 @@ export async function saveAIConfig(config: AIConfig): Promise<void> {
     await preferences.put(KEY_PROVIDER, config.provider)
     await preferences.put(KEY_MODEL, config.model)
     await preferences.put(KEY_BASE_URL, config.baseUrl || '')
-    if (assetSaved) {
-      // 加密存储成功后清理旧版本明文，避免“删除密钥后又被旧明文复活”
-      await preferences.delete(KEY_API_KEY)
-    } else {
-      // 降级存储：与旧版本行为一致
-      await preferences.put(KEY_API_KEY, config.apiKey)
-    }
+    // 加密存储成功后清理旧版本明文，避免“删除密钥后又被旧明文复活”
+    await preferences.delete(KEY_API_KEY)
     await preferences.flush()
   } catch (_e) {
-    // Persistence failed; config stays in memory for the session
+    // Preferences 元数据写入失败：配置仍可能部分生效，但不抛出以免影响主流程
   }
 }
 

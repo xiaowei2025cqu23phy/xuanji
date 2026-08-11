@@ -299,42 +299,4 @@ export function getTrigramNature(binary: string): string {
   return ''
 }
 
-// ============================================================
-// Theme utility — create a snapshot for specific consumers
-// ============================================================
-export enum ThemeMode {
-  LIGHT = 'light',
-  DARK = 'dark'
-}
-
-export interface ThemeSnapshot {
-  bg: string
-  surface: string
-  card: string
-  border: string
-  textPrimary: string
-  textSecondary: string
-  textCaption: string
-  red: string
-  gold: string
-  cardActive: string
-  paper: string
-}
-
-export function themeColors(mode: ThemeMode): ThemeSnapshot {
-  const isPK: boolean = mode === ThemeMode.DARK
-  const ink: string = isPK ? '#ECE8DC' : '#1A1A1C'
-  const paper: string = isPK ? '#131316' : '#F4EFDF'
-  const white: string = isPK ? '#202024' : '#FFFFFF'
-  const red: string = isPK ? '#E05252' : '#B91C1C'
-  const gold: string = isPK ? '#C9A46B' : '#A67C52'
-  const cardActive: string = isPK ? '#26262B' : '#FDFAF3'
-  return {
-    bg: paper, surface: white + '80', card: white + '80',
-    border: ink + OP.FAINT, textPrimary: ink, textSecondary: ink + '80',
-    textCaption: ink + OP.X_LOW, red: red, gold: gold,
-    cardActive: cardActive, paper: paper
-  }
-}
-
 refreshDerivedTokens()

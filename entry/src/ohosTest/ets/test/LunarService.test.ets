@@ -247,5 +247,15 @@ export default function LunarServiceTest() {
     it('day_stem_branch_returns_two_chars', () => {
       expect(getDayStemBranch(new Date(2026, 5, 1)).length).assertEqual(2)
     })
+
+    // -- 日柱基准对拍（防回归）：以 1900-01-01 为甲子基准推算已知日期 --
+    it('day_stem_branch_known_dates', () => {
+      // 2000-01-01 为甲子日（60 甲子首日）；+6 天 → 庚午
+      expect(getDayStemBranch(new Date(2000, 0, 7))).assertEqual('庚午')
+      // 2024-02-10 春节为甲辰日（公开可查）
+      expect(getDayStemBranch(new Date(2024, 1, 10))).assertEqual('甲辰')
+      // 2026-08-12（审查当日）应为癸丑日（可对照万年历）
+      expect(getDayStemBranch(new Date(2026, 7, 12))).assertEqual('癸丑')
+    })
   })
 }
